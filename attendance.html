@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Attendance - Mark Attendance</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">SA</div>
+                <div class="brand-text">
+                    <strong>Smart</strong>
+                    <span>Attendance</span>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-link" href="index.html">Home</a>
+                <a class="nav-link active" href="attendance.html">Mark Attendance</a>
+                <a class="nav-link" href="records.html">Attendance Records</a>
+                <a class="nav-link" href="profile.html">Profile</a>
+                <a class="nav-link" href="reports.html">Reports & Analytics</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary w-full" id="toggle-theme" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title">Mark Attendance</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="datetime" id="datetime"></div>
+                </div>
+            </header>
+
+            <section class="card mt-16">
+                <h3 class="section-title">Select Class & Slot</h3>
+                <div class="filters">
+                    <select class="input" id="a-dept">
+                        <option value="">Department</option>
+                        <option>Computer</option>
+                        <option>IT</option>
+                        <option>Civil</option>
+                        <option>ECS</option>
+                        <option>DS</option>
+                    </select>
+                    <select class="input" id="a-year">
+                        <option value="">Year</option>
+                        <option>FY</option>
+                        <option>SY</option>
+                        <option>TY</option>
+                        <option>BE</option>
+                    </select>
+                    <select class="input" id="a-division">
+                        <option value="">Division</option>
+                        <option>A</option>
+                        <option>B</option>
+                    </select>
+                    <select class="input" id="a-slot">
+                        <option value="">Time Slot</option>
+                        <option>9:00 - 10:00</option>
+                        <option>10:00 - 11:00</option>
+                        <option>11:00 - 12:00</option>
+                        <option>12:00 - 1:00</option>
+                        <option disabled>1:00 - 2:00 (Lunch)</option>
+                        <option>2:00 - 3:00</option>
+                        <option>3:00 - 4:00</option>
+                    </select>
+                    <button class="btn btn-primary" id="a-apply">Use Selection</button>
+                </div>
+                <div id="a-context" class="muted" style="margin-top:8px"></div>
+            </section>
+
+            <section class="attendance">
+                <div class="camera-frame">
+                    <video id="video" autoplay playsinline></video>
+                    <div class="face-outline glow" id="face-outline"></div>
+                </div>
+                <p class="instruction">Please align your face inside the frame</p>
+                <div class="status" id="status">
+                    <span class="status-icon">⌛</span>
+                    <span class="status-text">Waiting for detection...</span>
+                </div>
+                <div class="actions">
+                    <button class="btn btn-primary" id="btn-detect">Simulate Detection</button>
+                    <button class="btn" id="btn-reset">Reset</button>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="assets/main.js"></script>
+</body>
+</html>
+
+

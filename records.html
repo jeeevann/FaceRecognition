@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Attendance - Records</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">SA</div>
+                <div class="brand-text">
+                    <strong>Smart</strong>
+                    <span>Attendance</span>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-link" href="index.html">Home</a>
+                <a class="nav-link" href="attendance.html">Mark Attendance</a>
+                <a class="nav-link active" href="records.html">Attendance Records</a>
+                <a class="nav-link" href="profile.html">Profile</a>
+                <a class="nav-link" href="reports.html">Reports & Analytics</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary w-full" id="toggle-theme" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="topbar">
+                <h1 class="page-title">Attendance Records</h1>
+                <div class="actions">
+                    <button class="btn">Export PDF</button>
+                    <button class="btn">Export Excel</button>
+                </div>
+            </header>
+
+            <section class="card">
+                <div class="filters">
+                    <input type="text" class="input" placeholder="Search name or ID" />
+                    <input type="date" class="input" />
+                    <input type="date" class="input" />
+                    <select class="input">
+                        <option>All Departments</option>
+                        <option>IT</option>
+                        <option>HR</option>
+                        <option>Finance</option>
+                    </select>
+                    <button class="btn btn-primary">Filter</button>
+                </div>
+
+                <div class="table-wrapper mt-16">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>ID</th>
+                                <th>Time In</th>
+                                <th>Time Out</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td>Aarav Patel</td>
+                                <td>EMP-001</td>
+                                <td>09:05 AM</td>
+                                <td>06:12 PM</td>
+                                <td><span class="badge success">Present</span></td>
+                            </tr>
+                            <tr>
+                                <td>Neha Sharma</td>
+                                <td>EMP-002</td>
+                                <td>—</td>
+                                <td>—</td>
+                                <td><span class="badge danger">Absent</span></td>
+                            </tr>
+                            <tr>
+                                <td>Rohit Verma</td>
+                                <td>EMP-003</td>
+                                <td>09:15 AM</td>
+                                <td>06:02 PM</td>
+                                <td><span class="badge success">Present</span></td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="assets/main.js"></script>
+</body>
+</html>
+
+

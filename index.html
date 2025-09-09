@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Attendance - Home</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+    <div id="app">
+        <aside class="sidebar">
+            <div class="brand">
+                <div class="brand-logo">SA</div>
+                <div class="brand-text">
+                    <strong>Smart</strong>
+                    <span>Attendance</span>
+                </div>
+            </div>
+            <nav class="nav" id="nav-public">
+                <a class="nav-link active" href="index.html">Home</a>
+                <a class="nav-link" href="attendance.html">Mark Attendance</a>
+                <a class="nav-link" href="records.html">Attendance Records</a>
+                <a class="nav-link" href="profile.html">Profile</a>
+                <a class="nav-link" href="reports.html">Reports & Analytics</a>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary w-full" id="toggle-theme" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title">Welcome</h1>
+                </div>
+                <div class="topbar-right">
+                    <div class="datetime" id="datetime"></div>
+                </div>
+            </header>
+
+            <section class="hero">
+                <div class="card" style="width:min(840px,96vw)">
+                    <h3 class="section-title">Select Class</h3>
+                    <div class="filters" id="home-filters">
+                    <select class="input" id="f-dept" aria-label="Department">
+                        <option value="">Select Department</option>
+                        <option>Computer</option>
+                        <option>IT</option>
+                        <option>Civil</option>
+                        <option>ECS</option>
+                        <option>DS</option>
+                    </select>
+                    <select class="input" id="f-year" aria-label="Year">
+                        <option value="">Select Year</option>
+                        <option>FY</option>
+                        <option>SY</option>
+                        <option>TY</option>
+                        <option>BE</option>
+                    </select>
+                    <select class="input" id="f-division" aria-label="Division">
+                        <option value="">Select Division</option>
+                        <option>A</option>
+                        <option>B</option>
+                    </select>
+                    <select class="input" id="f-slot" aria-label="Time Slot">
+                        <option value="">Select Time Slot</option>
+                        <option>9:00 - 10:00</option>
+                        <option>10:00 - 11:00</option>
+                        <option>11:00 - 12:00</option>
+                        <option>12:00 - 1:00</option>
+                        <option disabled>1:00 - 2:00 (Lunch)</option>
+                        <option>2:00 - 3:00</option>
+                        <option>3:00 - 4:00</option>
+                    </select>
+                    <button class="btn btn-primary" id="apply-filter">Apply</button>
+                    <a href="attendance.html" class="btn btn-primary" id="go-attendance" style="display:none">Mark Attendance</a>
+                    </div>
+                </div>
+            </section>
+
+
+            
+
+            
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="assets/main.js"></script>
+</body>
+</html>

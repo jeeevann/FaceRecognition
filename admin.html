@@ -1,0 +1,75 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Smart Attendance - Admin Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="assets/styles.css" />
+</head>
+<body>
+    <div id="app" data-role-guard="Admin">
+        <aside class="sidebar admin-accent">
+            <div class="brand">
+                <div class="brand-logo">SA</div>
+                <div class="brand-text">
+                    <strong>Smart</strong>
+                    <span>Attendance</span>
+                </div>
+            </div>
+            <nav class="nav">
+                <a class="nav-link active" href="admin.html">Dashboard</a>
+                <a class="nav-link" href="admin-students.html">Manage Students</a>
+                <a class="nav-link" href="admin-teachers.html">Manage Teachers</a>
+                <a class="nav-link" href="records.html">Attendance Records</a>
+                <a class="nav-link" href="reports.html">Reports</a>
+                <button class="btn mt-16" id="logout">Logout</button>
+            </nav>
+            <div class="sidebar-footer">
+                <button class="btn btn-secondary w-full" id="toggle-theme" aria-label="Toggle dark mode">🌙 Dark Mode</button>
+            </div>
+        </aside>
+
+        <main class="content">
+            <header class="topbar">
+                <div class="topbar-left">
+                    <h1 class="page-title">Admin Dashboard</h1>
+                </div>
+                <div class="topbar-right"></div>
+            </header>
+
+            <section class="grid grid-4 mt-16">
+                <div class="card stat-card">
+                    <div class="stat-label">Total Strength</div>
+                    <div class="stat-value">320</div>
+                </div>
+                <div class="card stat-card success">
+                    <div class="stat-label">Present Today</div>
+                    <div class="stat-value">298</div>
+                </div>
+                <div class="card stat-card danger">
+                    <div class="stat-label">Absent Today</div>
+                    <div class="stat-value">22</div>
+                </div>
+                <div class="card stat-card info">
+                    <div class="stat-label">On Leave</div>
+                    <div class="stat-value">6</div>
+                </div>
+            </section>
+
+            <section class="card mt-24">
+                <h3 class="section-title">Attendance Trend</h3>
+                <div class="chart-placeholder shimmer" style="height: 280px"></div>
+            </section>
+        </main>
+    </div>
+
+    <div id="toast-container"></div>
+    <script src="assets/main.js"></script>
+</body>
+</html>
+
+
