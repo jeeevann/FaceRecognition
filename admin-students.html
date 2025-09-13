@@ -24,7 +24,6 @@
                 <a class="nav-link active" href="admin-students.html">Manage Students</a>
                 <a class="nav-link" href="admin-teachers.html">Manage Teachers</a>
                 <a class="nav-link" href="records.html">Attendance Records</a>
-                <a class="nav-link" href="reports.html">Reports</a>
                 <button class="btn mt-16" id="logout">Logout</button>
             </nav>
             <div class="sidebar-footer">
@@ -38,17 +37,19 @@
             </header>
 
             <section class="card">
-                <form id="student-form" class="student-form">
+                <form id="student-form" class="student-form" enctype="multipart/form-data">
                     <input class="input" placeholder="Full Name" id="s-name" required />
                     <input class="input" placeholder="Email" type="email" id="s-email" required />
                     <input class="input" placeholder="Phone" id="s-phone" />
                     <input class="input" placeholder="Roll No." id="s-roll" required />
                     <input class="input" placeholder="Class" id="s-class" required />
+                    <input class="input" placeholder="Year" id="s-year" required />
+                    <input class="input" placeholder="Division" id="s-division" required />
                     <input class="input" placeholder="Section" id="s-section" />
                     <input class="input" placeholder="Department" id="s-dept" />
                     <div class="col-span-2" style="display:flex;align-items:center;gap:12px">
-                        <div class="preview" id="student-preview">Upload sample image</div>
-                        <input class="input" type="file" accept="image/*" id="s-image" />
+                        <div class="preview" id="student-preview">Upload 2-3 clear images</div>
+                        <input class="input" type="file" accept="image/*" id="s-photos" multiple />
                     </div>
                     <div class="col-span-2" style="display:flex;gap:10px;flex-wrap:wrap">
                         <button class="btn btn-primary" type="submit">Save Student</button>

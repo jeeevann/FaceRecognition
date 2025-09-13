@@ -20,11 +20,9 @@
                 </div>
             </div>
             <nav class="nav">
-                <a class="nav-link" href="index.html">Home</a>
+                <a class="nav-link" href="home.html">Home</a>
                 <a class="nav-link" href="attendance.html">Mark Attendance</a>
                 <a class="nav-link active" href="records.html">Attendance Records</a>
-                <a class="nav-link" href="profile.html">Profile</a>
-                <a class="nav-link" href="reports.html">Reports & Analytics</a>
             </nav>
             <div class="sidebar-footer">
                 <button class="btn btn-secondary w-full" id="toggle-theme" aria-label="Toggle dark mode">🌙 Dark Mode</button>
@@ -42,52 +40,29 @@
 
             <section class="card">
                 <div class="filters">
-                    <input type="text" class="input" placeholder="Search name or ID" />
-                    <input type="date" class="input" />
-                    <input type="date" class="input" />
-                    <select class="input">
-                        <option>All Departments</option>
-                        <option>IT</option>
-                        <option>HR</option>
-                        <option>Finance</option>
-                    </select>
-                    <button class="btn btn-primary">Filter</button>
+                    <input type="date" class="input" id="r-date" />
+                    <input type="text" class="input" id="r-class" placeholder="Class" />
+                    <input type="text" class="input" id="r-year" placeholder="Year" />
+                    <input type="text" class="input" id="r-division" placeholder="Division" />
+                    <input type="text" class="input" id="r-student" placeholder="Student name or ID" />
+                    <button class="btn btn-primary" id="r-apply">Filter</button>
                 </div>
 
                 <div class="table-wrapper mt-16">
                     <table class="table">
                         <thead>
                             <tr>
-                                <th>Name</th>
-                                <th>ID</th>
-                                <th>Time In</th>
-                                <th>Time Out</th>
+                                <th>Date</th>
+                                <th>Student</th>
+                                <th>Class</th>
+                                <th>Year</th>
+                                <th>Division</th>
+                                <th>Subject</th>
+                                <th>Time Slot</th>
                                 <th>Status</th>
                             </tr>
                         </thead>
-                        <tbody>
-                            <tr>
-                                <td>Aarav Patel</td>
-                                <td>EMP-001</td>
-                                <td>09:05 AM</td>
-                                <td>06:12 PM</td>
-                                <td><span class="badge success">Present</span></td>
-                            </tr>
-                            <tr>
-                                <td>Neha Sharma</td>
-                                <td>EMP-002</td>
-                                <td>—</td>
-                                <td>—</td>
-                                <td><span class="badge danger">Absent</span></td>
-                            </tr>
-                            <tr>
-                                <td>Rohit Verma</td>
-                                <td>EMP-003</td>
-                                <td>09:15 AM</td>
-                                <td>06:02 PM</td>
-                                <td><span class="badge success">Present</span></td>
-                            </tr>
-                        </tbody>
+                        <tbody id="records-body"></tbody>
                     </table>
                 </div>
             </section>

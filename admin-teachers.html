@@ -21,10 +21,7 @@
             </div>
             <nav class="nav">
                 <a class="nav-link" href="admin.html">Dashboard</a>
-                <a class="nav-link" href="admin-students.html">Manage Students</a>
                 <a class="nav-link active" href="admin-teachers.html">Manage Teachers</a>
-                <a class="nav-link" href="records.html">Attendance Records</a>
-                <a class="nav-link" href="reports.html">Reports</a>
                 <button class="btn mt-16" id="logout">Logout</button>
             </nav>
             <div class="sidebar-footer">
@@ -41,6 +38,7 @@
                 <form id="teacher-form" class="teacher-form">
                     <input class="input" placeholder="Full Name" id="t-name" required />
                     <input class="input" placeholder="Email" type="email" id="t-email" required />
+                    <input class="input" placeholder="Password" type="text" id="t-password" required />
                     <input class="input" placeholder="Phone" id="t-phone" />
                     <input class="input" placeholder="Department" id="t-dept" required />
                     <input class="input" placeholder="Employee ID" id="t-empid" />
@@ -53,11 +51,11 @@
                             <tr>
                                 <th>Name</th>
                                 <th>Email</th>
-                                <th>Phone</th>
                                 <th>Department</th>
+                                <th>Phone</th>
                                 <th>Emp ID</th>
-                                <th>Title</th>
-                                <th>Actions</th>
+                                <th>Designation</th>
+                                <th>Created At</th>
                             </tr>
                         </thead>
                         <tbody id="teachers-body"></tbody>

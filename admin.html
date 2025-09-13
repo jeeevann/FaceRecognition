@@ -22,10 +22,7 @@
             </div>
             <nav class="nav">
                 <a class="nav-link active" href="admin.html">Dashboard</a>
-                <a class="nav-link" href="admin-students.html">Manage Students</a>
                 <a class="nav-link" href="admin-teachers.html">Manage Teachers</a>
-                <a class="nav-link" href="records.html">Attendance Records</a>
-                <a class="nav-link" href="reports.html">Reports</a>
                 <button class="btn mt-16" id="logout">Logout</button>
             </nav>
             <div class="sidebar-footer">
@@ -41,33 +38,65 @@
                 <div class="topbar-right"></div>
             </header>
 
-            <section class="grid grid-4 mt-16">
+            <section class="grid grid-3 mt-16">
                 <div class="card stat-card">
-                    <div class="stat-label">Total Strength</div>
-                    <div class="stat-value">320</div>
+                    <div class="stat-label">Total Teachers</div>
+                    <div class="stat-value" id="stat-teachers">-</div>
                 </div>
-                <div class="card stat-card success">
-                    <div class="stat-label">Present Today</div>
-                    <div class="stat-value">298</div>
+                <div class="card stat-card">
+                    <div class="stat-label">Total Students</div>
+                    <div class="stat-value" id="stat-students">-</div>
                 </div>
-                <div class="card stat-card danger">
-                    <div class="stat-label">Absent Today</div>
-                    <div class="stat-value">22</div>
-                </div>
-                <div class="card stat-card info">
-                    <div class="stat-label">On Leave</div>
-                    <div class="stat-value">6</div>
+                <div class="card stat-card">
+                    <div class="stat-label">Total Classes</div>
+                    <div class="stat-value" id="stat-classes">-</div>
                 </div>
             </section>
 
             <section class="card mt-24">
-                <h3 class="section-title">Attendance Trend</h3>
-                <div class="chart-placeholder shimmer" style="height: 280px"></div>
+                <h3 class="section-title">All Teachers</h3>
+                <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap">
+                    <input class="input" id="t-search" placeholder="Search by name/email/department" style="max-width:360px" />
+                    <select class="input" id="t-sort">
+                        <option value="created_at|desc">Newest</option>
+                        <option value="created_at|asc">Oldest</option>
+                        <option value="name|asc">Name A-Z</option>
+                        <option value="name|desc">Name Z-A</option>
+                        <option value="department|asc">Dept A-Z</option>
+                        <option value="department|desc">Dept Z-A</option>
+                    </select>
+                </div>
+                <div class="table-wrapper mt-16">
+                    <table class="table">
+                        <thead>
+                            <tr>
+                                <th>Name</th>
+                                <th>Email</th>
+                                <th>Department</th>
+                                <th>Phone</th>
+                                <th>Emp ID</th>
+                                <th>Designation</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teachers-body"></tbody>
+                    </table>
+                    <div class="mt-12" style="display:flex;gap:8px;align-items:center;justify-content:flex-end">
+                        <button class="btn" id="t-prev">Prev</button>
+                        <span id="t-page" class="muted">1</span>
+                        <button class="btn" id="t-next">Next</button>
+                    </div>
+                </div>
             </section>
+
+            <!-- Manage Teachers moved to a separate page (admin-teachers.html) -->
+
+            
         </main>
     </div>
 
     <div id="toast-container"></div>
+    <script src="assets/api.js"></script>
     <script src="assets/main.js"></script>
 </body>
 </html>
