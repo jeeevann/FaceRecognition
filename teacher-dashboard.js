@@ -421,11 +421,19 @@
       return
     }
 
-    attendanceContainer.style.display = 'flex'
-    addLogEntry(`Started attendance for ${classVal} ${yearVal} ${divisionVal} - ${subjectVal} (${timeSlotVal})`)
-    
-    // Simulate face recognition
-    simulateFaceRecognition()
+    // Persist selection for attendance page and navigate
+    try {
+      localStorage.setItem('sa.attendance.selection', JSON.stringify({
+        dept: classVal,
+        year: yearVal,
+        division: divisionVal,
+        slot: timeSlotVal
+      }))
+      localStorage.setItem('sa.attendance.subject', subjectVal)
+    } catch {}
+
+    // Redirect to dedicated attendance page where camera opens automatically
+    window.location.href = 'attendance.html'
   })
 
   stopAttendanceBtn.addEventListener('click', () => {

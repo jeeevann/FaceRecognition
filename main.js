@@ -316,6 +316,12 @@
   ;(function initAttendanceSelection(){
     const s = loadAttendanceSelection()
     if(s){ if(aDept) aDept.value = s.dept||''; if(aYear) aYear.value = s.year||''; if(aDivision) aDivision.value = s.division||''; if(aSlot) aSlot.value = s.slot||'' }
+    // Pre-fill subject if available (from teacher dashboard)
+    try{
+      const subj = localStorage.getItem('sa.attendance.subject') || ''
+      const subjEl = document.getElementById('a-subject')
+      if(subj && subjEl){ subjEl.value = subj }
+    }catch{}
     applyAttendanceContext()
   })()
   aApply && aApply.addEventListener('click', () => {

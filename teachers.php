@@ -25,8 +25,7 @@ switch($method) {
         exit;
 
     case 'GET':
-        // Get all teachers
-        // Exclude password from the response
+       
         $stmt = $pdo->query("SELECT id, name, email, phone, department, employee_id, designation, created_at FROM teachers ORDER BY created_at DESC");
         $teachers = $stmt->fetchAll(PDO::FETCH_ASSOC);
         echo json_encode($teachers);

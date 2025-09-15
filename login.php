@@ -36,7 +36,7 @@ try {
         exit;
     }
 
-    // Admin login: fallback to default admin if admins table not implemented
+   
     $defaultAdminEmail = 'admin@1';
     $defaultAdminPassword = 'admin123';
     if ($email === $defaultAdminEmail && $password === $defaultAdminPassword) {

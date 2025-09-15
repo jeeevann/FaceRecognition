@@ -115,6 +115,15 @@ body{
 /* Records */
 .filters{display:flex;gap:10px;flex-wrap:wrap}
 .input{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);color:var(--text);padding:10px 12px;border-radius:10px;min-width:160px}
+/* Ensure select dropdown options are readable across browsers */
+select.input{color:#ffffff;background:#000000;border-color:rgba(255,255,255,.16)}
+select.input option{background:#000000;color:#ffffff}
+select.input option:checked,select.input option:hover{background:#111111;color:#ffffff}
+select.input option:disabled{color:#7a85ad;background:#111111}
+/* Safari/iOS sometimes inherits white text into the popup; enforce dark text */
+@supports (-webkit-touch-callout: none){
+  select.input option{color:#ffffff !important;background:#000000 !important}
+}
 .table-wrapper{overflow:auto;border-radius:12px;border:1px solid rgba(255,255,255,.06)}
 .table{width:100%;border-collapse:separate;border-spacing:0}
 .table thead th{position:sticky;top:0;background:#101835;padding:12px;text-align:left;color:#cfd6ff;font-weight:700}
