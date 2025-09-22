@@ -1,0 +1,9 @@
+numpy
+opencv-python
+scikit-learn
+scikit-fuzzy
+tqdm
+tensorflow
+mysql-connector-python
+flask
+flask-cors

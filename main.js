@@ -96,8 +96,6 @@
     })
   }
 
-  // Signup disabled: accounts are created by admin
-
   // Logout buttons
   $$('#logout').forEach(btn => btn.addEventListener('click', () => {
     clearAuth()
@@ -120,14 +118,17 @@
     }, 3000)
   }
 
-  // Attendance page interactions (simulated)
+  // Attendance page interactions - integrated with Flask recognition
   const video = $('#video')
   const statusBox = $('#status')
   const statusText = statusBox ? statusBox.querySelector('.status-text') : null
   const statusIcon = statusBox ? statusBox.querySelector('.status-icon') : null
   const btnDetect = $('#btn-detect')
   const btnReset = $('#btn-reset')
-  
+
+  const FLASK_BASE = 'http://127.0.0.1:5001'
+  let streaming = false
+  let streamTimer = null
 
   async function initCamera(){
     if(!video) return
@@ -140,39 +141,79 @@
   }
   initCamera()
 
+  function getAttendanceMeta(){
+    const sel = (()=>{ try{ return JSON.parse(localStorage.getItem('sa.attendance.selection')||'null') }catch{ return null } })() || {}
+    return {
+      teacher_id: 1,
+      department: sel.dept || 'Computer',
+      year: sel.year || 'FY',
+      division: sel.division || 'A',
+      time_slot: sel.slot || '9:00 - 10:00'
+    }
+  }
+
+  async function captureAndSendFrame(){
+    if(!video || !streaming) return
+    const canvas = document.createElement('canvas')
+    canvas.width = video.videoWidth || 640
+    canvas.height = video.videoHeight || 480
+    const ctx = canvas.getContext('2d')
+    ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+    try{
+      const res = await fetch(`${FLASK_BASE}/recognize`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image_data: dataUrl, meta: getAttendanceMeta() })
+      })
+      const json = await res.json()
+      if(!statusBox || !statusText || !statusIcon) return
+      if(json.success){
+        const decision = json.decision
+        if(decision === 'present'){
+          statusBox.classList.remove('danger')
+          statusBox.classList.add('success')
+          statusText.textContent = `Attendance Marked: ${json.name} (sim ${json.similarity.toFixed(2)})`
+          statusIcon.textContent = '✅'
+        } else if(decision === 'uncertain'){
+          statusBox.classList.remove('success')
+          statusBox.classList.add('danger')
+          statusText.textContent = `Uncertain: ${json.name} (sim ${json.similarity.toFixed(2)})`
+          statusIcon.textContent = '❓'
+        } else {
+          statusBox.classList.remove('success')
+          statusBox.classList.add('danger')
+          statusText.textContent = 'Face Not Recognized'
+          statusIcon.textContent = '❌'
+        }
+      } else {
+        statusBox.classList.remove('success')
+        statusBox.classList.add('danger')
+        statusText.textContent = 'Recognition error'
+        statusIcon.textContent = '⚠️'
+      }
+    }catch(err){
+      if(statusBox && statusText && statusIcon){
+        statusBox.classList.remove('success')
+        statusBox.classList.add('danger')
+        statusText.textContent = 'Connection to recognition server failed'
+        statusIcon.textContent = '⚠️'
+      }
+    }
+  }
+
   btnDetect && btnDetect.addEventListener('click', () => {
     if(!statusBox || !statusText || !statusIcon) return
-    const dept = document.getElementById('a-dept')?.value || ''
-    const year = document.getElementById('a-year')?.value || ''
-    const division = document.getElementById('a-division')?.value || ''
-    const slot = document.getElementById('a-slot')?.value || ''
-    if((dept || year || division || slot) && (!dept || !year || !division || !slot)){
-      toast('Please select Department, Year, Division and Time Slot', 'danger')
-      return
-    }
-    const recognized = Math.random() > 0.35
-    if(recognized){
-      statusBox.classList.remove('danger')
-      statusBox.classList.add('success')
-      statusText.textContent = 'Attendance Marked Successfully'
-      statusIcon.textContent = '✅'
-      const key = (dept && year && division && slot) ? `sa.attendance.${dept}.${year}.${division}` : null
-      if(key){
-        const today = new Date().toISOString().slice(0,10)
-        const db = (()=>{ try{ return JSON.parse(localStorage.getItem(key)||'{}') }catch{ return {} } })()
-        db[today] = db[today] || {}
-        db[today][slot] = db[today][slot] || { present: 0, records: [] }
-        db[today][slot].present += 1
-        db[today][slot].records.push({ ts: Date.now() })
-        localStorage.setItem(key, JSON.stringify(db))
-      }
-      toast('Attendance marked', 'success')
+    if(!streaming){
+      streaming = true
+      statusText.textContent = 'Recognizing...'
+      statusIcon.textContent = '🔍'
+      streamTimer = setInterval(captureAndSendFrame, 1200)
     } else {
-      statusBox.classList.remove('success')
-      statusBox.classList.add('danger')
-      statusText.textContent = 'Face Not Recognized. Try Again'
-      statusIcon.textContent = '❌'
-      toast('Face not recognized', 'danger')
+      streaming = false
+      if(streamTimer){ clearInterval(streamTimer); streamTimer = null }
+      statusText.textContent = 'Stopped'
+      statusIcon.textContent = '⏹️'
     }
   })
 
@@ -227,7 +268,7 @@
   rApply && rApply.addEventListener('click', renderRecords)
   renderRecords()
 
-  // Home schedule + filters
+  // Home schedule + filters (unchanged)
   const scheduleGrid = document.getElementById('schedule-grid')
   const scheduleCaption = document.getElementById('schedule-caption')
   const applyFilterBtn = document.getElementById('apply-filter')
@@ -237,9 +278,7 @@
   const divSel = document.getElementById('f-division')
   const slotSel = document.getElementById('f-slot')
   const FILTER_KEY = 'sa.home.filters'
-  function loadFilters(){
-    try{ return JSON.parse(localStorage.getItem(FILTER_KEY) || 'null') }catch{ return null }
-  }
+  function loadFilters(){ try{ return JSON.parse(localStorage.getItem(FILTER_KEY) || 'null') }catch{ return null } }
   function saveFilters(obj){ localStorage.setItem(FILTER_KEY, JSON.stringify(obj)) }
   function renderSchedule(){
     if(!scheduleGrid) return
@@ -253,11 +292,7 @@
       } else {
         const start = h
         const end = h+1
-        const fmt = (x) => {
-          const ampm = x < 12 ? 'AM' : 'PM'
-          const hour = ((x+11)%12)+1
-          return `${hour}:00 ${ampm}`
-        }
+        const fmt = (x) => { const ampm = x < 12 ? 'AM' : 'PM'; const hour = ((x+11)%12)+1; return `${hour}:00 ${ampm}` }
         div.innerHTML = `<span class="time">${fmt(start)} - ${fmt(end)}</span><span class="label">1 hour</span>`
       }
       scheduleGrid.appendChild(div)
@@ -274,220 +309,22 @@
     if(v) parts.push(`Div ${v}`)
     scheduleCaption.textContent = parts.length ? `Schedule for ${parts.join(' • ')}` : 'Select Department, Year and Division'
   }
-  // init filters from storage
   ;(function initHomeFilters(){
     const saved = loadFilters()
-    if(saved){
-      if(deptSel) deptSel.value = saved.dept || ''
-      if(yearSel) yearSel.value = saved.year || ''
-      if(divSel) divSel.value = saved.division || ''
-      if(slotSel) slotSel.value = saved.slot || ''
-    }
+    if(saved){ if(deptSel) deptSel.value = saved.dept || ''; if(yearSel) yearSel.value = saved.year || ''; if(divSel) divSel.value = saved.division || ''; if(slotSel) slotSel.value = saved.slot || '' }
     applyFiltersUI()
     renderSchedule()
   })()
   applyFilterBtn && applyFilterBtn.addEventListener('click', () => {
     const current = { dept: deptSel.value, year: yearSel.value, division: divSel.value, slot: slotSel?.value || '' }
     if(!current.dept || !current.year || !current.division || !current.slot){ toast('Please select Department, Year, Division and Time Slot', 'danger'); return }
-    saveFilters(current)
+    localStorage.setItem('sa.attendance.selection', JSON.stringify({ dept: current.dept, year: current.year, division: current.division, slot: current.slot }))
     applyFiltersUI()
     if(goAttendanceBtn) goAttendanceBtn.style.display = 'inline-block'
-    // also prime attendance selection
-    try{ localStorage.setItem('sa.attendance.selection', JSON.stringify({ dept: current.dept, year: current.year, division: current.division, slot: current.slot })) }catch{}
     toast('Selection saved. You can now mark attendance.', 'success')
   })
 
-  // Attendance selection context
-  const aDept = document.getElementById('a-dept')
-  const aYear = document.getElementById('a-year')
-  const aDivision = document.getElementById('a-division')
-  const aSlot = document.getElementById('a-slot')
-  const aApply = document.getElementById('a-apply')
-  const aContext = document.getElementById('a-context')
-  const A_SEL_KEY = 'sa.attendance.selection'
-  function saveAttendanceSelection(sel){ localStorage.setItem(A_SEL_KEY, JSON.stringify(sel)) }
-  function loadAttendanceSelection(){ try{ return JSON.parse(localStorage.getItem(A_SEL_KEY)||'null') }catch{ return null } }
-  function applyAttendanceContext(){
-    if(!aContext) return
-    const s = loadAttendanceSelection()
-    if(!s || !s.dept || !s.year || !s.division || !s.slot){ aContext.textContent = 'Select Department, Year, Division and Time Slot'; return }
-    aContext.textContent = `Selected: ${s.dept} • ${s.year} • Div ${s.division} • ${s.slot}`
-  }
-  ;(function initAttendanceSelection(){
-    const s = loadAttendanceSelection()
-    if(s){ if(aDept) aDept.value = s.dept||''; if(aYear) aYear.value = s.year||''; if(aDivision) aDivision.value = s.division||''; if(aSlot) aSlot.value = s.slot||'' }
-    // Pre-fill subject if available (from teacher dashboard)
-    try{
-      const subj = localStorage.getItem('sa.attendance.subject') || ''
-      const subjEl = document.getElementById('a-subject')
-      if(subj && subjEl){ subjEl.value = subj }
-    }catch{}
-    applyAttendanceContext()
-  })()
-  aApply && aApply.addEventListener('click', () => {
-    const sel = { dept: aDept.value, year: aYear.value, division: aDivision.value, slot: aSlot.value }
-    if(!sel.dept || !sel.year || !sel.division || !sel.slot){ toast('Please fill all selection fields', 'danger'); return }
-    saveAttendanceSelection(sel)
-    applyAttendanceContext()
-    toast('Selection saved', 'success')
-  })
-
-  // Manage Teachers via API
-  const teachersBody = document.getElementById('teachers-body')
-  const teacherForm = document.getElementById('teacher-form')
-  async function loadAdminStats(){
-    const t = document.getElementById('stat-teachers')
-    const s = document.getElementById('stat-students')
-    const c = document.getElementById('stat-classes')
-    if(!t || !s || !c) return
-    try{
-      // bust cache
-      const stats = await fetch(`${API_BASE}/admin_stats.php?ts=${Date.now()}`).then(r=>r.json())
-      if(stats?.success){
-        t.textContent = stats.teachers
-        s.textContent = stats.students
-        c.textContent = stats.classes
-      }
-      // ensure teacher count reflects current DB list length
-      try{
-        const list = await teachersAPI.getAll()
-        if(Array.isArray(list)) t.textContent = String(list.length)
-      }catch{}
-    }catch{}
-  }
-  loadAdminStats()
-  async function renderTeachers(){
-    if(!teachersBody) return
-    teachersBody.innerHTML = ''
-    try{
-      const list = await teachersAPI.getAll()
-      // client-side search/sort/paginate
-      const q = (document.getElementById('t-search')?.value || '').toLowerCase()
-      const sortVal = (document.getElementById('t-sort')?.value || 'created_at|desc')
-      const [sortKey, sortDir] = sortVal.split('|')
-      let filtered = list
-      if(q){
-        filtered = list.filter(t => (
-          (t.name||'').toLowerCase().includes(q) ||
-          (t.email||'').toLowerCase().includes(q) ||
-          (t.department||'').toLowerCase().includes(q)
-        ))
-      }
-      filtered.sort((a,b) => {
-        const av = (a[sortKey]||'').toString().toLowerCase()
-        const bv = (b[sortKey]||'').toString().toLowerCase()
-        if(av < bv) return sortDir==='asc' ? -1 : 1
-        if(av > bv) return sortDir==='asc' ? 1 : -1
-        return 0
-      })
-      const PAGE_SIZE = 8
-      const pageEl = document.getElementById('t-page')
-      const prevEl = document.getElementById('t-prev')
-      const nextEl = document.getElementById('t-next')
-      const currentPage = Number(pageEl?.dataset.page || '1')
-      const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE))
-      const page = Math.min(currentPage, totalPages)
-      if(pageEl){ pageEl.textContent = `${page} / ${totalPages}`; pageEl.dataset.page = String(page) }
-      const start = (page-1)*PAGE_SIZE
-      const rows = filtered.slice(start, start + PAGE_SIZE)
-      rows.forEach((t) => {
-        const tr = document.createElement('tr')
-        const created = t.created_at ? new Date(t.created_at).toLocaleString() : ''
-        tr.innerHTML = `<td>${t.name||''}</td><td>${t.email||''}</td><td>${t.department||''}</td><td>${t.phone||''}</td><td>${t.employee_id||''}</td><td>${t.designation||''}</td><td>${created}</td>`
-        teachersBody.appendChild(tr)
-      })
-      // wire pagination controls once
-      if(prevEl && !prevEl.dataset.wired){
-        prevEl.dataset.wired = '1'
-        prevEl.addEventListener('click', () => {
-          const p = Math.max(1, (Number(pageEl.dataset.page)||1) - 1)
-          pageEl.dataset.page = String(p)
-          renderTeachers()
-        })
-      }
-      if(nextEl && !nextEl.dataset.wired){
-        nextEl.dataset.wired = '1'
-        nextEl.addEventListener('click', () => {
-          const p = Math.min(totalPages, (Number(pageEl.dataset.page)||1) + 1)
-          pageEl.dataset.page = String(p)
-          renderTeachers()
-        })
-      }
-    }catch(err){ toast('Failed to load teachers', 'danger') }
-  }
-  teacherForm && teacherForm.addEventListener('submit', async (e) => {
-    e.preventDefault()
-    const name = document.getElementById('t-name').value.trim()
-    const email = document.getElementById('t-email').value.trim()
-    const password = (document.getElementById('t-password')?.value || '').trim()
-    const phone = (document.getElementById('t-phone')?.value || '').trim()
-    const department = document.getElementById('t-dept').value.trim()
-    const employee_id = (document.getElementById('t-empid')?.value || '').trim()
-    const designation = (document.getElementById('t-title')?.value || '').trim()
-    // Inline validation
-    const emailRe = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-    const invalids = []
-    if(!name) invalids.push('t-name')
-    if(!email || !emailRe.test(email)) invalids.push('t-email')
-    if(!department) invalids.push('t-dept')
-    if(!password) invalids.push('t-password')
-    ;['t-name','t-email','t-dept','t-password'].forEach(id => {
-      const el = document.getElementById(id)
-      if(!el) return
-      if(invalids.includes(id)) el.style.borderColor = '#e63946'; else el.style.removeProperty('border-color')
-    })
-    if(invalids.length){
-      const first = document.getElementById(invalids[0]); first && first.focus()
-      toast('Please correct highlighted fields', 'danger')
-      return
-    }
-    // Frontend duplicate check to provide immediate feedback
-    try{
-      const existing = await teachersAPI.getAll()
-      if(existing.some(t => (t.email||'').toLowerCase() === email.toLowerCase())){
-        const emailEl = document.getElementById('t-email'); if(emailEl){ emailEl.style.borderColor = '#e63946'; emailEl.focus() }
-        toast('Email already exists', 'danger')
-        return
-      }
-      const phoneN = phone.replace(/\D+/g,'')
-      if(phoneN && existing.some(t => (String(t.phone||'').replace(/\D+/g,'') === phoneN))){
-        const phoneEl = document.getElementById('t-phone'); if(phoneEl){ phoneEl.style.borderColor = '#e63946'; phoneEl.focus() }
-        toast('Mobile number already exists', 'danger')
-        return
-      }
-    }catch(err){ /* ignore precheck failure; server will validate too */ }
-    try{
-      const res = await teachersAPI.add({ name, email, password, phone, department, employee_id, designation })
-      if(!res?.success){
-        const msg = (res?.error||'').toLowerCase()
-        if(msg.includes('email')){ const el = document.getElementById('t-email'); if(el){ el.style.borderColor='#e63946'; el.focus() } }
-        else if(msg.includes('mobile')){ const el = document.getElementById('t-phone'); if(el){ el.style.borderColor='#e63946'; el.focus() } }
-        toast(res?.error || 'Failed to save teacher', 'danger');
-        return
-      }
-      teacherForm.reset()
-      toast('Teacher saved', 'success')
-      // Notify other tabs/pages (e.g., dashboard) to refresh
-      try{ localStorage.setItem('sa.teachers.changed', String(Date.now())) }catch{}
-      renderTeachers()
-      loadAdminStats()
-    }catch(err){
-      toast('Failed to save teacher', 'danger')
-    }
-  })
-  renderTeachers()
-  // Auto-refresh when window/tab regains focus
-  if(teachersBody){
-    window.addEventListener('focus', () => { renderTeachers(); loadAdminStats() })
-    document.addEventListener('visibilitychange', () => { if(!document.hidden){ renderTeachers(); loadAdminStats() } })
-    window.addEventListener('storage', (ev) => { if(ev.key === 'sa.teachers.changed'){ renderTeachers(); loadAdminStats() } })
-    const searchEl = document.getElementById('t-search')
-    const sortEl = document.getElementById('t-sort')
-    searchEl && searchEl.addEventListener('input', () => { const p = document.getElementById('t-page'); if(p) p.dataset.page='1'; renderTeachers() })
-    sortEl && sortEl.addEventListener('change', () => { const p = document.getElementById('t-page'); if(p) p.dataset.page='1'; renderTeachers() })
-  }
-
-  // Manage Students via API (multipart) with image preview
+  // Student management (unchanged)
   const studentsBody = document.getElementById('students-body')
   const studentForm = document.getElementById('student-form')
   const studentPreview = document.getElementById('student-preview')
@@ -497,7 +334,6 @@
     studentsBody.innerHTML = ''
     try{
       const list = await studentsAPI.getAll()
-      // Apply teacher filters if present
       const fClass = (document.getElementById('st-filter-class')?.value || '').toLowerCase()
       const fYear = (document.getElementById('st-filter-year')?.value || '').toLowerCase()
       const fDiv = (document.getElementById('st-filter-division')?.value || '').toLowerCase()
@@ -512,7 +348,7 @@
       })
       filtered.forEach((s) => {
         const tr = document.createElement('tr')
-        const imgCell = '' // could show first photo later
+        const imgCell = ''
         tr.innerHTML = `<td>${imgCell}</td><td>${s.name||''}</td><td>${s.email||''}</td><td>${s.phone||''}</td><td>${s.roll_no||''}</td><td>${s.class||s.class_name||''}</td><td>${s.section||''}</td><td>${s.department||''}</td><td></td>`
         studentsBody.appendChild(tr)
       })

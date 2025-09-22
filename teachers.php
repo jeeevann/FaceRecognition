@@ -32,20 +32,20 @@ switch($method) {
         break;
         
     case 'POST':
-        // Add new teacher
+      
         $data = json_decode(file_get_contents('php://input'), true);
-        // Ensure password column exists (idempotent)
+        
         try {
             $check = $pdo->query("SHOW COLUMNS FROM teachers LIKE 'password'");
             if ($check->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE teachers ADD COLUMN password VARCHAR(255) NULL AFTER email");
             }
-            // Ensure unique index on email (idempotent)
+
             $idx = $pdo->query("SHOW INDEX FROM teachers WHERE Key_name = 'uniq_teachers_email'");
             if ($idx->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE teachers ADD CONSTRAINT uniq_teachers_email UNIQUE (email)");
             }
-            // Ensure unique index on phone allowing NULLs (idempotent)
+          
             $idx2 = $pdo->query("SHOW INDEX FROM teachers WHERE Key_name = 'uniq_teachers_phone'");
             if ($idx2->rowCount() === 0) {
                 $pdo->exec("ALTER TABLE teachers ADD CONSTRAINT uniq_teachers_phone UNIQUE (phone)");

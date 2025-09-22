@@ -1,5 +1,5 @@
 // API helper functions for database operations
-const API_BASE = '/Mini-Project/api';
+const API_BASE = '/Mini-Project/FaceRecognition-main';
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
     const options = {

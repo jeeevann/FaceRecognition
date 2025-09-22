@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-result { margin: 10px 0; padding: 10px; border-radius: 5px; }
+        .success { background-color: #d4edda; color: #155724; }
+        .error { background-color: #f8d7da; color: #721c24; }
+        button { padding: 10px 20px; margin: 5px; }
+    </style>
+</head>
+<body>
+    <h1>Login Test</h1>
+    <button onclick="testAdminLogin()">Test Admin Login</button>
+    <button onclick="testTeacherLogin()">Test Teacher Login</button>
+    <div id="results"></div>
+
+    <script>
+        async function testAdminLogin() {
+            const resultDiv = document.getElementById('results');
+            resultDiv.innerHTML = '<div class="test-result">Testing Admin Login...</div>';
+            
+            try {
+                const response = await fetch('login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'admin@1',
+                        password: 'admin123',
+                        role: 'Admin'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML += `<div class="test-result success">✅ Admin Login Success: ${JSON.stringify(data)}</div>`;
+                } else {
+                    resultDiv.innerHTML += `<div class="test-result error">❌ Admin Login Failed: ${JSON.stringify(data)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="test-result error">❌ Network Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testTeacherLogin() {
+            const resultDiv = document.getElementById('results');
+            resultDiv.innerHTML += '<div class="test-result">Testing Teacher Login...</div>';
+            
+            try {
+                const response = await fetch('login.php', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        email: 'teacher@test.com',
+                        password: 'password123',
+                        role: 'Teacher'
+                    })
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    resultDiv.innerHTML += `<div class="test-result success">✅ Teacher Login Success: ${JSON.stringify(data)}</div>`;
+                } else {
+                    resultDiv.innerHTML += `<div class="test-result error">❌ Teacher Login Failed: ${JSON.stringify(data)}</div>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<div class="test-result error">❌ Network Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>

@@ -207,7 +207,7 @@
     
     // Check for duplicate student ID before submitting
     try {
-      const existingStudents = await fetch('api/students.php').then(r => r.json())
+      const existingStudents = await fetch('students.php').then(r => r.json())
       if (Array.isArray(existingStudents)) {
         const duplicate = existingStudents.find(s => (s.roll_no || '').toLowerCase() === studentId.toLowerCase())
         if (duplicate) {
@@ -242,7 +242,7 @@
     })
 
     try {
-      const response = await fetch('api/students.php', {
+      const response = await fetch('students.php', {
         method: 'POST',
         body: formData
       })
@@ -304,7 +304,7 @@
       // Show loading state
       studentsTableBody.innerHTML = '<tr><td colspan="7" style="text-align: center; padding: 20px; color: var(--muted);">Loading students...</td></tr>'
       
-      const response = await fetch('api/students.php')
+      const response = await fetch('students.php')
       const students = await response.json()
       
       if (!Array.isArray(students)) {
@@ -545,7 +545,7 @@
   window.deleteStudent = async function(id) {
     if (confirm('Are you sure you want to delete this student?')) {
       try {
-        const response = await fetch(`api/students.php?id=${id}`, {
+        const response = await fetch(`students.php?id=${id}`, {
           method: 'DELETE'
         })
         const result = await response.json()
