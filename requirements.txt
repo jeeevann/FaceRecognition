@@ -7,3 +7,7 @@ tensorflow
 mysql-connector-python
 flask
 flask-cors
+face-recognition
+dlib
+pandas
+cmake

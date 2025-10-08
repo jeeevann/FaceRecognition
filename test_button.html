@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Start Attendance Button</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .form-group { margin: 10px 0; }
+        select, input, button { padding: 8px; margin: 5px; }
+        button { background: #007bff; color: white; border: none; border-radius: 4px; cursor: pointer; }
+        button:hover { background: #0056b3; }
+        .debug { background: #f8f9fa; padding: 10px; margin: 10px 0; border-radius: 4px; }
+    </style>
+</head>
+<body>
+    <h1>Test Start Attendance Button</h1>
+    
+    <div class="debug">
+        <h3>Debug Information:</h3>
+        <div id="debug-info">Loading...</div>
+    </div>
+
+    <div class="form-group">
+        <label>Department:</label>
+        <select id="lecture-class">
+            <option value="">Select Department</option>
+            <option value="Computer">Computer</option>
+            <option value="IT">IT</option>
+            <option value="Civil">Civil</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Year:</label>
+        <select id="lecture-year">
+            <option value="">Select Year</option>
+            <option value="FY">FY</option>
+            <option value="SY">SY</option>
+            <option value="TY">TY</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Division:</label>
+        <select id="lecture-division">
+            <option value="">Select Division</option>
+            <option value="A">A</option>
+            <option value="B">B</option>
+        </select>
+    </div>
+
+    <div class="form-group">
+        <label>Subject:</label>
+        <input type="text" id="lecture-subject" placeholder="Enter subject">
+    </div>
+
+    <div class="form-group">
+        <label>Time Slot:</label>
+        <select id="lecture-time-slot">
+            <option value="">Select Time Slot</option>
+            <option value="9:00 - 10:00">9:00 - 10:00</option>
+            <option value="10:00 - 11:00">10:00 - 11:00</option>
+            <option value="11:00 - 12:00">11:00 - 12:00</option>
+        </select>
+    </div>
+
+    <button id="start-attendance">Start Attendance</button>
+    
+    <div id="toast-container"></div>
+
+    <script>
+        // Simple selector function
+        const $ = (s) => document.querySelector(s)
+
+        // Toast function
+        function toast(message, type = 'success') {
+            console.log(`[${type.toUpperCase()}] ${message}`)
+            
+            const toastContainer = $('#toast-container') || document.body
+            const el = document.createElement('div')
+            el.textContent = message
+            el.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                padding: 12px 20px;
+                background: ${type === 'success' ? '#10b981' : type === 'danger' ? '#ef4444' : '#3b82f6'};
+                color: white;
+                border-radius: 6px;
+                z-index: 1000;
+                opacity: 0;
+                transition: opacity 0.3s;
+            `
+            toastContainer.appendChild(el)
+            
+            setTimeout(() => el.style.opacity = '1', 10)
+            setTimeout(() => {
+                el.style.opacity = '0'
+                setTimeout(() => el.remove(), 300)
+            }, 3000)
+        }
+
+        // Debug information
+        function updateDebugInfo() {
+            const debugInfo = $('#debug-info')
+            const startBtn = $('#start-attendance')
+            
+            debugInfo.innerHTML = `
+                <strong>Button found:</strong> ${!!startBtn}<br>
+                <strong>Button ID:</strong> ${startBtn ? startBtn.id : 'N/A'}<br>
+                <strong>Current time:</strong> ${new Date().toLocaleTimeString()}<br>
+                <strong>Page loaded:</strong> ${document.readyState}<br>
+            `
+        }
+
+        // Setup button event listener
+        function setupButton() {
+            const btn = $('#start-attendance')
+            
+            if (!btn) {
+                console.log('Button not found!')
+                return
+            }
+
+            console.log('Setting up button event listener')
+            
+            btn.addEventListener('click', (e) => {
+                e.preventDefault()
+                console.log('Button clicked!')
+                
+                const classEl = $('#lecture-class')
+                const yearEl = $('#lecture-year')
+                const divisionEl = $('#lecture-division')
+                const subjectEl = $('#lecture-subject')
+                const timeSlotEl = $('#lecture-time-slot')
+
+                console.log('Elements found:', {
+                    class: !!classEl,
+                    year: !!yearEl,
+                    division: !!divisionEl,
+                    subject: !!subjectEl,
+                    timeSlot: !!timeSlotEl
+                })
+
+                if (!classEl || !yearEl || !divisionEl || !subjectEl || !timeSlotEl) {
+                    toast('Form elements not found!', 'danger')
+                    return
+                }
+
+                const classVal = classEl.value
+                const yearVal = yearEl.value
+                const divisionVal = divisionEl.value
+                const subjectVal = subjectEl.value
+                const timeSlotVal = timeSlotEl.value
+
+                console.log('Form values:', { classVal, yearVal, divisionVal, subjectVal, timeSlotVal })
+
+                if (!classVal || !yearVal || !divisionVal || !subjectVal || !timeSlotVal) {
+                    toast('Please fill all fields!', 'danger')
+                    return
+                }
+
+                // Save to localStorage
+                try {
+                    localStorage.setItem('sa.attendance.selection', JSON.stringify({
+                        dept: classVal,
+                        year: yearVal,
+                        division: divisionVal,
+                        slot: timeSlotVal
+                    }))
+                    localStorage.setItem('sa.attendance.subject', subjectVal)
+                    
+                    toast('Selection saved! Would redirect to attendance.html', 'success')
+                    console.log('Data saved to localStorage')
+                    
+                } catch (error) {
+                    console.error('Error saving to localStorage:', error)
+                    toast('Error saving selection', 'danger')
+                }
+            })
+
+            // Update debug info
+            updateDebugInfo()
+        }
+
+        // Initialize when DOM is ready
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupButton)
+        } else {
+            setupButton()
+        }
+
+        // Update debug info every second
+        setInterval(updateDebugInfo, 1000)
+    </script>
+</body>
+</html>

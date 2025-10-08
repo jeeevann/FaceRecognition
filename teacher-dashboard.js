@@ -2,6 +2,45 @@
   const $ = (s, r = document) => r.querySelector(s)
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s))
 
+  // Toast function fallback if not available from main.js
+  function toast(message, type = 'success') {
+    // Try to use the global toast function first
+    if (window.toast && typeof window.toast === 'function') {
+      return window.toast(message, type)
+    }
+    
+    // Fallback: simple alert or console log
+    console.log(`[${type.toUpperCase()}] ${message}`)
+    
+    // Try to create a simple toast
+    const toastContainer = $('#toast-container') || document.body
+    const el = document.createElement('div')
+    el.className = `toast ${type}`
+    el.textContent = message
+    el.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${type === 'success' ? '#10b981' : type === 'danger' ? '#ef4444' : '#3b82f6'};
+      color: white;
+      border-radius: 6px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+    `
+    toastContainer.appendChild(el)
+    
+    // Animate in
+    setTimeout(() => el.style.opacity = '1', 10)
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      el.style.opacity = '0'
+      setTimeout(() => el.remove(), 300)
+    }, 3000)
+  }
+
   // Navigation handling
   const navLinks = $$('.nav-link[data-section]')
   const contentSections = $$('.content-section')
@@ -66,6 +105,28 @@
   const photoUploadArea = $('#photo-upload-area')
   const photoPreview = $('#photo-preview')
   const studentPhotosInput = $('#student-photos')
+  const uploadPhotosBtn = $('#upload-photos-btn')
+  uploadPhotosBtn && uploadPhotosBtn.addEventListener('click', () => {
+    studentPhotosInput?.click()
+  })
+
+  // Handle manual photo uploads and preview
+  studentPhotosInput && studentPhotosInput.addEventListener('change', async (e) => {
+    const files = Array.from(e.target.files || [])
+    if(!files.length){ photoPreview && (photoPreview.innerHTML = ''); return }
+    photoPreview.innerHTML = ''
+    const max = Math.min(files.length, 3)
+    for(let i=0; i<max; i++){
+      const file = files[i]
+      const reader = new FileReader()
+      reader.onload = () => {
+        const img = document.createElement('img')
+        img.src = reader.result
+        photoPreview.appendChild(img)
+      }
+      reader.readAsDataURL(file)
+    }
+  })
   const studentsTableBody = $('#students-table-body')
   const studentSearch = $('#student-search')
   const filterDepartment = $('#filter-department')
@@ -73,7 +134,7 @@
   const filterDivision = $('#filter-division')
   const applyFilters = $('#apply-filters')
 
-  // Camera capture functionality
+  // Camera capture functionality (only if elements exist)
   const studentCamera = $('#student-camera')
   const cameraPlaceholder = $('#camera-placeholder')
   const startCameraBtn = $('#start-camera')
@@ -84,8 +145,8 @@
   let cameraStream = null
   let capturedImages = []
 
-  // Start camera
-  startCameraBtn.addEventListener('click', async () => {
+  // Start camera (only if button exists)
+  startCameraBtn && startCameraBtn.addEventListener('click', async () => {
     try {
       cameraStream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'user' } 
@@ -103,8 +164,8 @@
     }
   })
 
-  // Capture photo
-  capturePhotoBtn.addEventListener('click', () => {
+  // Capture photo (only if button exists)
+  capturePhotoBtn && capturePhotoBtn.addEventListener('click', () => {
     if (capturedImages.length >= 2) {
       toast('Maximum 2 photos allowed', 'warning')
       return
@@ -139,8 +200,8 @@
     }
   })
 
-  // Stop camera
-  stopCameraBtn.addEventListener('click', () => {
+  // Stop camera (only if button exists)
+  stopCameraBtn && stopCameraBtn.addEventListener('click', () => {
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop())
       cameraStream = null
@@ -184,8 +245,8 @@
     }
   }
 
-  // Student form submission
-  studentForm.addEventListener('submit', async (e) => {
+  // Student form submission (only if form exists)
+  studentForm && studentForm.addEventListener('submit', async (e) => {
     e.preventDefault()
     
     // Validate required fields
@@ -200,8 +261,9 @@
       return
     }
     
-    if (capturedImages.length === 0) {
-      toast('Please capture at least one photo', 'danger')
+    const uploadedFiles = (studentPhotosInput && studentPhotosInput.files) ? Array.from(studentPhotosInput.files) : []
+    if (capturedImages.length === 0 && uploadedFiles.length === 0) {
+      toast('Please add at least one photo (capture or upload)', 'danger')
       return
     }
     
@@ -238,7 +300,11 @@
     // Add captured images as files
     capturedImages.forEach((imageData, index) => {
       const blob = dataURLtoBlob(imageData)
-      formData.append('photos[]', blob, `photo${index + 1}.jpg`)
+      formData.append('photos', blob, `photo${index + 1}.jpg`)
+    })
+    // Add uploaded files from input
+    uploadedFiles.forEach((file) => {
+      formData.append('photos', file)
     })
 
     try {
@@ -252,15 +318,10 @@
         toast(`Student added successfully! Photos saved: ${result.photos_saved || 0}`, 'success')
         studentForm.reset()
         capturedImages = []
+        if(studentPhotosInput){ studentPhotosInput.value = '' }
         
         // Reset photo slots
-        for (let i = 1; i <= 2; i++) {
-          const photoSlot = $(`#photo-slot-${i}`)
-          photoSlot.innerHTML = `
-            <div class="photo-placeholder">Photo ${i}</div>
-            <button class="btn-icon remove-photo" onclick="removePhoto(${i})" style="display: none;">❌</button>
-          `
-        }
+        if(photoPreview){ photoPreview.innerHTML = '' }
         
         // Stop camera if running
         if (cameraStream) {
@@ -350,7 +411,7 @@
       
       filteredStudents.forEach(student => {
         const row = document.createElement('tr')
-        const photoPath = student.photo_folder_path ? `uploads/students/${student.id}/img1.jpg` : null
+        const photoPath = student.photo_folder_path ? `${student.photo_folder_path}/img1.jpg` : null
         row.innerHTML = `
           <td>
             <div class="student-photo">
@@ -376,12 +437,12 @@
     }
   }
 
-  // Filter event listeners
-  studentSearch.addEventListener('input', loadStudents)
-  filterDepartment.addEventListener('change', loadStudents)
-  filterYear.addEventListener('change', loadStudents)
-  filterDivision.addEventListener('change', loadStudents)
-  applyFilters.addEventListener('click', loadStudents)
+  // Filter event listeners (only if elements exist)
+  studentSearch && studentSearch.addEventListener('input', loadStudents)
+  filterDepartment && filterDepartment.addEventListener('change', loadStudents)
+  filterYear && filterYear.addEventListener('change', loadStudents)
+  filterDivision && filterDivision.addEventListener('change', loadStudents)
+  applyFilters && applyFilters.addEventListener('click', loadStudents)
 
   // Take Attendance functionality
   const attendanceContainer = $('#attendance-container')
@@ -391,14 +452,25 @@
   const attendanceLog = $('#attendance-log')
   const recognitionOverlay = $('#recognition-overlay')
 
+  // Debug: Check if start attendance button exists
+  console.log('Start Attendance Button found:', !!startAttendanceBtn)
+  if (startAttendanceBtn) {
+    console.log('Button element:', startAttendanceBtn)
+  } else {
+    console.log('Button not found, trying alternative selectors...')
+    const altBtn = document.getElementById('start-attendance')
+    console.log('Alternative selector result:', !!altBtn)
+  }
+
   function initializeAttendance() {
-    // Initialize camera if not already done
-    if (!attendanceVideo.srcObject) {
+    // Initialize camera if not already done (and if elements exist)
+    if (attendanceVideo && !attendanceVideo.srcObject) {
       initCamera()
     }
   }
 
   async function initCamera() {
+    if (!attendanceVideo) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ 
         video: { facingMode: 'user' } 
@@ -409,39 +481,18 @@
     }
   }
 
-  startAttendanceBtn.addEventListener('click', () => {
-    const classVal = $('#lecture-class').value
-    const yearVal = $('#lecture-year').value
-    const divisionVal = $('#lecture-division').value
-    const subjectVal = $('#lecture-subject').value
-    const timeSlotVal = $('#lecture-time-slot').value
+  // Event listener moved to setupStartAttendanceButton function
 
-    if (!classVal || !yearVal || !divisionVal || !subjectVal || !timeSlotVal) {
-      toast('Please fill all lecture details', 'danger')
-      return
+  stopAttendanceBtn && stopAttendanceBtn.addEventListener('click', () => {
+    if (attendanceContainer) {
+      attendanceContainer.style.display = 'none'
     }
-
-    // Persist selection for attendance page and navigate
-    try {
-      localStorage.setItem('sa.attendance.selection', JSON.stringify({
-        dept: classVal,
-        year: yearVal,
-        division: divisionVal,
-        slot: timeSlotVal
-      }))
-      localStorage.setItem('sa.attendance.subject', subjectVal)
-    } catch {}
-
-    // Redirect to dedicated attendance page where camera opens automatically
-    window.location.href = 'attendance.html'
-  })
-
-  stopAttendanceBtn.addEventListener('click', () => {
-    attendanceContainer.style.display = 'none'
     addLogEntry('Attendance session ended')
   })
 
   function addLogEntry(text) {
+    if (!attendanceLog) return
+    
     const now = new Date()
     const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     
@@ -531,10 +582,65 @@
     })
   }
 
-  generateReportBtn.addEventListener('click', loadReports)
-  downloadReportBtn.addEventListener('click', () => {
+  generateReportBtn && generateReportBtn.addEventListener('click', loadReports)
+  downloadReportBtn && downloadReportBtn.addEventListener('click', () => {
     toast('Report downloaded successfully', 'success')
   })
+
+  // Global function for start attendance button
+  window.handleStartAttendance = function() {
+    console.log('handleStartAttendance called')
+    
+    const classEl = document.getElementById('lecture-class')
+    const yearEl = document.getElementById('lecture-year')
+    const divisionEl = document.getElementById('lecture-division')
+    const subjectEl = document.getElementById('lecture-subject')
+    const timeSlotEl = document.getElementById('lecture-time-slot')
+
+    console.log('Elements found:', {
+      class: !!classEl,
+      year: !!yearEl,
+      division: !!divisionEl,
+      subject: !!subjectEl,
+      timeSlot: !!timeSlotEl
+    })
+
+    if (!classEl || !yearEl || !divisionEl || !subjectEl || !timeSlotEl) {
+      alert('Form elements not found. Please refresh the page.')
+      return
+    }
+
+    const classVal = classEl.value
+    const yearVal = yearEl.value
+    const divisionVal = divisionEl.value
+    const subjectVal = subjectEl.value
+    const timeSlotVal = timeSlotEl.value
+
+    console.log('Form values:', { classVal, yearVal, divisionVal, subjectVal, timeSlotVal })
+
+    if (!classVal || !yearVal || !divisionVal || !subjectVal || !timeSlotVal) {
+      alert('Please fill all lecture details')
+      return
+    }
+
+    // Save selection and navigate
+    try {
+      localStorage.setItem('sa.attendance.selection', JSON.stringify({
+        dept: classVal,
+        year: yearVal,
+        division: divisionVal,
+        slot: timeSlotVal
+      }))
+      localStorage.setItem('sa.attendance.subject', subjectVal)
+      
+      console.log('Selection saved, redirecting...')
+      window.location.href = 'attendance.html'
+      
+    } catch (error) {
+      console.error('Error saving to localStorage:', error)
+      alert('Error saving selection: ' + error.message)
+    }
+  }
 
   // Global functions for student actions
   window.editStudent = function(id) {
@@ -563,7 +669,88 @@
     }
   }
 
+  // Function to setup start attendance button
+  function setupStartAttendanceButton() {
+    const btn = $('#start-attendance') || document.getElementById('start-attendance')
+    
+    if (!btn) {
+      console.log('Start attendance button not found, retrying in 500ms...')
+      setTimeout(setupStartAttendanceButton, 500)
+      return
+    }
+
+    console.log('Setting up start attendance button event listener')
+    
+    btn.addEventListener('click', (e) => {
+      e.preventDefault()
+      console.log('Start Attendance button clicked') // Debug log
+      
+      const classEl = $('#lecture-class')
+      const yearEl = $('#lecture-year')
+      const divisionEl = $('#lecture-division')
+      const subjectEl = $('#lecture-subject')
+      const timeSlotEl = $('#lecture-time-slot')
+
+      // Debug: Check if elements exist
+      console.log('Elements found:', {
+        class: !!classEl,
+        year: !!yearEl,
+        division: !!divisionEl,
+        subject: !!subjectEl,
+        timeSlot: !!timeSlotEl
+      })
+
+      if (!classEl || !yearEl || !divisionEl || !subjectEl || !timeSlotEl) {
+        toast('Form elements not found. Please refresh the page.', 'danger')
+        return
+      }
+
+      const classVal = classEl.value
+      const yearVal = yearEl.value
+      const divisionVal = divisionEl.value
+      const subjectVal = subjectEl.value
+      const timeSlotVal = timeSlotEl.value
+
+      console.log('Form values:', { classVal, yearVal, divisionVal, subjectVal, timeSlotVal }) // Debug log
+
+      if (!classVal || !yearVal || !divisionVal || !subjectVal || !timeSlotVal) {
+        toast('Please fill all lecture details', 'danger')
+        return
+      }
+
+      // Persist selection for attendance page and navigate
+      try {
+        localStorage.setItem('sa.attendance.selection', JSON.stringify({
+          dept: classVal,
+          year: yearVal,
+          division: divisionVal,
+          slot: timeSlotVal
+        }))
+        localStorage.setItem('sa.attendance.subject', subjectVal)
+        
+        console.log('Selection saved to localStorage') // Debug log
+        toast('Redirecting to attendance page...', 'info')
+        
+        // Small delay to show the toast
+        setTimeout(() => {
+          window.location.href = 'attendance.html'
+        }, 500)
+        
+      } catch (error) {
+        console.error('Error saving to localStorage:', error)
+        toast('Error saving selection', 'danger')
+      }
+    })
+  }
+
   // Initialize dashboard on load
   loadDashboardStats()
   loadStudents()
+  
+  // Setup start attendance button when DOM is ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupStartAttendanceButton)
+  } else {
+    setupStartAttendanceButton()
+  }
 })()

@@ -83,14 +83,66 @@
                     <video id="video" autoplay playsinline></video>
                     <div class="face-outline glow" id="face-outline"></div>
                 </div>
-                <p class="instruction">Please align your face inside the frame</p>
+                <p class="instruction">Please align your face inside the frame for attendance</p>
                 <div class="status" id="status">
                     <span class="status-icon">⌛</span>
-                    <span class="status-text">Waiting for detection...</span>
+                    <span class="status-text">Initializing camera...</span>
                 </div>
                 <div class="actions">
-                    <button class="btn btn-primary" id="btn-detect">Stop</button>
+                    <button class="btn btn-primary" id="btn-detect">Start Recognition</button>
                     <button class="btn" id="btn-reset">Reset</button>
+                    <button class="btn btn-secondary" onclick="window.location.href='teacher-dashboard.html'">Back to Dashboard</button>
+                </div>
+                
+                <!-- Attendance Records Section -->
+                <div class="card mt-16" id="attendance-records-section">
+                    <h3 class="section-title">Today's Attendance Records</h3>
+                    <div class="attendance-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Total Present:</span>
+                            <span class="stat-value" id="total-present-count">0</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Last Updated:</span>
+                            <span class="stat-value" id="last-updated">-</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Recognition Threshold:</span>
+                            <span class="stat-value">2-3 detections</span>
+                        </div>
+                    </div>
+                    <div class="table-wrapper">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Roll No</th>
+                                    <th>Name</th>
+                                    <th>Time</th>
+                                    <th>Confidence</th>
+                                    <th>Detections</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-records-body">
+                                <tr>
+                                    <td colspan="6" style="text-align: center; padding: 20px; color: var(--muted);">
+                                        Waiting for students...
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Live Recognition Log Section -->
+                <div class="card mt-16" id="attendance-log-section">
+                    <h3 class="section-title">Live Recognition Log</h3>
+                    <div class="log-container" id="live-attendance-log">
+                        <div class="log-item">
+                            <span class="log-time">--:--</span>
+                            <span class="log-text">Waiting for face detection...</span>
+                        </div>
+                    </div>
                 </div>
             </section>
         </main>

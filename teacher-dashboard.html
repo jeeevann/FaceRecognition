@@ -149,6 +149,7 @@
                                     <div class="upload-icon">📷</div>
                                     <div class="upload-text">Upload Photos</div>
                                     <div class="upload-instruction">Please upload 2-3 clear photos</div>
+                                    <button type="button" class="btn" id="upload-photos-btn">Upload Images</button>
                                     <input type="file" id="student-photos" accept="image/*" multiple style="display: none;" />
                                 </div>
                                 <div class="photo-preview" id="photo-preview"></div>
@@ -221,7 +222,7 @@
                             <option>2:00 - 3:00</option>
                             <option>3:00 - 4:00</option>
                         </select>
-                        <button class="btn btn-primary btn-xl" id="start-attendance" onclick="window.location.href='attendance.html'">Start Attendance</button>
+                        <button class="btn btn-primary btn-xl" id="start-attendance" onclick="handleStartAttendance()">Start Attendance</button>
                     </div>
                 </div>
 
@@ -334,6 +335,6 @@
     <div id="toast-container"></div>
     <script src="api.js"></script>
     <script src="main.js"></script>
-    <script src="teacher-dashboard.js"></script>
+    <script src="teacher-dashboard-fixed.js"></script>
 </body>
 </html>

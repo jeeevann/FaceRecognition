@@ -275,4 +275,106 @@ select.input option:disabled{color:#7a85ad;background:#111111}
   .filters .input{min-width:auto}
 }
 
+/* Badge styles for attendance system */
+.badge{display:inline-block;padding:4px 8px;font-size:12px;font-weight:600;border-radius:6px}
+.badge.success{background:rgba(22,199,132,.15);color:#16c784}
+.badge.danger{background:rgba(255,107,107,.15);color:#ff6b6b}
+.badge.info{background:rgba(76,201,240,.15);color:#4cc9f0}
+.badge.warning{background:rgba(255,193,7,.15);color:#ffc107}
+
+/* Attendance records specific styles */
+.pending-recognition {
+  transition: all 0.3s ease;
+}
+
+.pending-recognition:hover {
+  background: rgba(255,255,255,.02);
+}
+
+/* Status styles for recognition states */
+.status.warning {
+  background: rgba(255,193,7,.1);
+  border-color: rgba(255,193,7,.2);
+}
+
+/* Enhanced stats for attendance */
+.attendance-stats {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+  gap: 16px;
+  margin-bottom: 20px;
+}
+
+.stat-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 12px;
+  background: rgba(255,255,255,.02);
+  border-radius: 8px;
+  border: 1px solid rgba(255,255,255,.06);
+}
+
+.stat-label {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+/* Live log styling */
+.log-container {
+  max-height: 300px;
+  overflow-y: auto;
+  background: rgba(255,255,255,.02);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 8px;
+  padding: 12px;
+}
+
+.log-item {
+  display: flex;
+  gap: 12px;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,.05);
+}
+
+.log-item:last-child {
+  border-bottom: none;
+}
+
+.log-time {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 500;
+  min-width: 60px;
+}
+
+.log-text {
+  color: var(--text);
+  font-size: 13px;
+}
+
+/* Animation for new entries */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.log-item:first-child,
+.pending-recognition {
+  animation: fadeInUp 0.3s ease;
+}
+
 

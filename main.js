@@ -104,19 +104,39 @@
   }))
 
   // Toasts
-  const toastContainer = $('#toast-container')
   function toast(message, type = 'success'){
-    if(!toastContainer) return
+    const toastContainer = $('#toast-container')
+    if(!toastContainer) {
+      console.log(`[${type.toUpperCase()}] ${message}`)
+      return
+    }
     const el = document.createElement('div')
     el.className = `toast ${type}`
     el.textContent = message
+    el.style.cssText = `
+      position: fixed;
+      top: 20px;
+      right: 20px;
+      padding: 12px 20px;
+      background: ${type === 'success' ? '#10b981' : type === 'danger' ? '#ef4444' : '#3b82f6'};
+      color: white;
+      border-radius: 6px;
+      z-index: 1000;
+      opacity: 0;
+      transition: opacity 0.3s;
+      margin-bottom: 10px;
+    `
     toastContainer.appendChild(el)
+    setTimeout(() => el.style.opacity = '1', 10)
     setTimeout(() => {
       el.style.opacity = '0'
       el.style.transform = 'translateY(12px)'
       setTimeout(() => el.remove(), 250)
     }, 3000)
   }
+  
+  // Make toast globally available
+  window.toast = toast
 
   // Attendance page interactions - integrated with Flask recognition
   const video = $('#video')
@@ -129,17 +149,34 @@
   const FLASK_BASE = 'http://127.0.0.1:5001'
   let streaming = false
   let streamTimer = null
+  let attendanceLog = []
+  let recognitionCounts = {} // Track recognition counts per student
+  let attendanceRecords = [] // Final attendance records
+  const REQUIRED_DETECTIONS = 2 // Number of detections needed to mark attendance
 
   async function initCamera(){
     if(!video) return
     try{
       const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' } })
       video.srcObject = stream
+      
+      // Auto-start recognition when camera is ready
+      video.addEventListener('loadedmetadata', () => {
+        if(btnDetect && !streaming) {
+          setTimeout(() => {
+            btnDetect.click() // Auto-start recognition
+          }, 1000)
+        }
+      })
     }catch(err){
-      toast('Camera access denied', 'danger')
+      toast('Camera access denied. Please allow camera access and refresh the page.', 'danger')
     }
   }
-  initCamera()
+
+  // Initialize camera when page loads
+  if(video) {
+    initCamera()
+  }
 
   function getAttendanceMeta(){
     const sel = (()=>{ try{ return JSON.parse(localStorage.getItem('sa.attendance.selection')||'null') }catch{ return null } })() || {}
@@ -148,51 +185,337 @@
       department: sel.dept || 'Computer',
       year: sel.year || 'FY',
       division: sel.division || 'A',
-      time_slot: sel.slot || '9:00 - 10:00'
+      time_slot: sel.slot || '9:00 - 10:00',
+      subject: localStorage.getItem('sa.attendance.subject') || 'General'
+    }
+  }
+
+  function addAttendanceLogEntry(name, rollNo, status, confidence) {
+    const now = new Date()
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    
+    const logEntry = {
+      time,
+      name,
+      rollNo,
+      status,
+      confidence,
+      timestamp: now
+    }
+    
+    attendanceLog.unshift(logEntry) // Add to beginning
+    
+    // Keep only last 20 entries
+    if(attendanceLog.length > 20) {
+      attendanceLog = attendanceLog.slice(0, 20)
+    }
+    
+    // Update UI if log container exists
+    updateAttendanceLogDisplay()
+  }
+
+  function processRecognition(name, rollNo, confidence, decision) {
+    const now = new Date()
+    const time = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    
+    // Add to live log
+    addToLiveLog(name, rollNo, confidence, decision, time)
+    
+    // Only count confident recognitions (>=60%)
+    if (decision === 'present' || decision === 'uncertain') {
+      if (!recognitionCounts[rollNo]) {
+        recognitionCounts[rollNo] = {
+          name: name,
+          rollNo: rollNo,
+          count: 0,
+          bestConfidence: 0,
+          firstSeen: time,
+          lastSeen: time
+        }
+      }
+      
+      recognitionCounts[rollNo].count++
+      recognitionCounts[rollNo].lastSeen = time
+      recognitionCounts[rollNo].bestConfidence = Math.max(recognitionCounts[rollNo].bestConfidence, confidence)
+      
+      // Check if we should mark attendance
+      if (recognitionCounts[rollNo].count >= REQUIRED_DETECTIONS) {
+        // Check if not already in attendance records
+        const alreadyMarked = attendanceRecords.find(record => record.rollNo === rollNo)
+        if (!alreadyMarked) {
+          markAttendance(rollNo, name, confidence, time)
+        }
+      }
+    }
+    
+    updateAttendanceRecordsDisplay()
+    updateStatsDisplay()
+  }
+  
+  function addToLiveLog(name, rollNo, confidence, decision, time) {
+    const logEntry = {
+      time,
+      name,
+      rollNo,
+      confidence,
+      decision,
+      timestamp: new Date()
+    }
+    
+    attendanceLog.unshift(logEntry) // Add to beginning
+    
+    // Keep only last 10 entries
+    if(attendanceLog.length > 10) {
+      attendanceLog = attendanceLog.slice(0, 10)
+    }
+    
+    updateLiveLogDisplay()
+  }
+  
+  function markAttendance(rollNo, name, confidence, time) {
+    const attendanceRecord = {
+      rollNo: rollNo,
+      name: name,
+      time: time,
+      confidence: confidence,
+      detections: recognitionCounts[rollNo].count,
+      status: 'Present',
+      timestamp: new Date()
+    }
+    
+    attendanceRecords.push(attendanceRecord)
+    
+    // Save to CSV via API call
+    saveAttendanceToCSV(attendanceRecord)
+    
+    // Show success message
+    toast(`✅ Attendance marked for ${name} (${rollNo}) after ${recognitionCounts[rollNo].count} detections!`, 'success')
+  }
+  
+  async function saveAttendanceToCSV(record) {
+    // This would typically call an API to save to CSV
+    // For now, we'll just log it
+    console.log('Saving to CSV:', record)
+    
+    // You can implement an API call here to save to the actual CSV file
+    // try {
+    //   await fetch('/save_attendance', {
+    //     method: 'POST',
+    //     headers: { 'Content-Type': 'application/json' },
+    //     body: JSON.stringify(record)
+    //   })
+    // } catch (error) {
+    //   console.error('Error saving to CSV:', error)
+    // }
+  }
+  
+  function updateAttendanceRecordsDisplay() {
+    const recordsBody = $('#attendance-records-body')
+    if (!recordsBody) return
+    
+    recordsBody.innerHTML = ''
+    
+    if (attendanceRecords.length === 0) {
+      // Show pending recognitions
+      const pendingStudents = Object.values(recognitionCounts).filter(student => student.count < REQUIRED_DETECTIONS)
+      
+      if (pendingStudents.length === 0) {
+        recordsBody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; padding: 20px; color: var(--muted);">
+              Waiting for students...
+            </td>
+          </tr>
+        `
+      } else {
+        pendingStudents.forEach(student => {
+          const row = document.createElement('tr')
+          row.className = 'pending-recognition'
+          row.innerHTML = `
+            <td>${student.rollNo}</td>
+            <td>${student.name}</td>
+            <td>${student.firstSeen}</td>
+            <td>${student.bestConfidence.toFixed(1)}%</td>
+            <td>${student.count}/${REQUIRED_DETECTIONS}</td>
+            <td><span class="badge warning">Detecting...</span></td>
+          `
+          recordsBody.appendChild(row)
+        })
+      }
+    }
+    
+    // Add confirmed attendance records
+    attendanceRecords.forEach(record => {
+      const row = document.createElement('tr')
+      row.innerHTML = `
+        <td><strong>${record.rollNo}</strong></td>
+        <td><strong>${record.name}</strong></td>
+        <td>${record.time}</td>
+        <td>${record.confidence.toFixed(1)}%</td>
+        <td>${record.detections}</td>
+        <td><span class="badge success">Present</span></td>
+      `
+      recordsBody.appendChild(row)
+    })
+    
+    // Show pending recognitions below confirmed ones
+    const pendingStudents = Object.values(recognitionCounts).filter(student => 
+      student.count < REQUIRED_DETECTIONS && !attendanceRecords.find(r => r.rollNo === student.rollNo)
+    )
+    
+    pendingStudents.forEach(student => {
+      const row = document.createElement('tr')
+      row.className = 'pending-recognition'
+      row.style.opacity = '0.7'
+      row.innerHTML = `
+        <td>${student.rollNo}</td>
+        <td>${student.name}</td>
+        <td>${student.firstSeen}</td>
+        <td>${student.bestConfidence.toFixed(1)}%</td>
+        <td><span class="badge info">${student.count}/${REQUIRED_DETECTIONS}</span></td>
+        <td><span class="badge warning">Detecting...</span></td>
+      `
+      recordsBody.appendChild(row)
+    })
+  }
+  
+  function updateLiveLogDisplay() {
+    const logContainer = $('#live-attendance-log')
+    
+    if(logContainer) {
+      logContainer.innerHTML = ''
+      
+      if(attendanceLog.length === 0) {
+        logContainer.innerHTML = '<div class="log-item"><span class="log-time">--:--</span><span class="log-text">Waiting for face detection...</span></div>'
+      } else {
+        attendanceLog.forEach(entry => {
+          const logItem = document.createElement('div')
+          logItem.className = 'log-item'
+          
+          let statusText = ''
+          if (entry.decision === 'present') {
+            statusText = `✅ Recognized (${entry.confidence.toFixed(1)}%)`
+          } else if (entry.decision === 'uncertain') {
+            statusText = `❓ Uncertain (${entry.confidence.toFixed(1)}%)`
+          } else {
+            statusText = `❌ Not recognized`
+          }
+          
+          logItem.innerHTML = `
+            <span class="log-time">${entry.time}</span>
+            <span class="log-text">${entry.name} (${entry.rollNo}) - ${statusText}</span>
+          `
+          logContainer.appendChild(logItem)
+        })
+      }
+    }
+  }
+  
+  function updateStatsDisplay() {
+    const totalCountEl = $('#total-present-count')
+    const lastUpdatedEl = $('#last-updated')
+    
+    if(totalCountEl) {
+      totalCountEl.textContent = attendanceRecords.length
+    }
+    
+    if(lastUpdatedEl && attendanceRecords.length > 0) {
+      const lastRecord = attendanceRecords[attendanceRecords.length - 1]
+      lastUpdatedEl.textContent = lastRecord.time
+    }
+  }
+  
+  function updateAttendanceLogDisplay() {
+    // Legacy function - now split into separate functions
+    updateAttendanceRecordsDisplay()
+    updateLiveLogDisplay()
+    updateStatsDisplay()
+  }
+
+  async function checkServerHealth() {
+    try {
+      const res = await fetch(`${FLASK_BASE}/health`)
+      const json = await res.json()
+      return json.ok
+    } catch(err) {
+      return false
     }
   }
 
   async function captureAndSendFrame(){
     if(!video || !streaming) return
+    
+    // Check if video is ready
+    if(video.videoWidth === 0 || video.videoHeight === 0) return
+    
     const canvas = document.createElement('canvas')
     canvas.width = video.videoWidth || 640
     canvas.height = video.videoHeight || 480
     const ctx = canvas.getContext('2d')
     ctx.drawImage(video, 0, 0, canvas.width, canvas.height)
-    const dataUrl = canvas.toDataURL('image/jpeg', 0.7)
+    const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+    
     try{
       const res = await fetch(`${FLASK_BASE}/recognize`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ image_data: dataUrl, meta: getAttendanceMeta() })
       })
+      
+      if(!res.ok) {
+        throw new Error(`Server error: ${res.status}`)
+      }
+      
       const json = await res.json()
+      
       if(!statusBox || !statusText || !statusIcon) return
+      
       if(json.success){
         const decision = json.decision
-        if(decision === 'present'){
-          statusBox.classList.remove('danger')
-          statusBox.classList.add('success')
-          statusText.textContent = `Attendance Marked: ${json.name} (sim ${json.similarity.toFixed(2)})`
-          statusIcon.textContent = '✅'
-        } else if(decision === 'uncertain'){
-          statusBox.classList.remove('success')
-          statusBox.classList.add('danger')
-          statusText.textContent = `Uncertain: ${json.name} (sim ${json.similarity.toFixed(2)})`
-          statusIcon.textContent = '❓'
+        const name = json.name || 'Unknown'
+        const rollNo = json.roll_no || ''
+        const confidence = json.confidence || 0
+        
+        // Process recognition for counting and attendance marking
+        if (name !== 'Unknown' && rollNo) {
+          processRecognition(name, rollNo, confidence, decision)
+        }
+        
+        // Update status display
+        if(decision === 'present' || decision === 'uncertain'){
+          const currentCount = recognitionCounts[rollNo] ? recognitionCounts[rollNo].count : 0
+          const isAlreadyMarked = attendanceRecords.find(record => record.rollNo === rollNo)
+          
+          if (isAlreadyMarked) {
+            statusBox.classList.remove('danger', 'warning')
+            statusBox.classList.add('success')
+            statusText.textContent = `✅ Already Present: ${name} (${rollNo}) - ${confidence.toFixed(1)}%`
+            statusIcon.textContent = '✅'
+          } else if (currentCount >= REQUIRED_DETECTIONS) {
+            statusBox.classList.remove('danger', 'warning')
+            statusBox.classList.add('success')
+            statusText.textContent = `✅ Attendance Confirmed: ${name} (${rollNo}) - ${confidence.toFixed(1)}%`
+            statusIcon.textContent = '✅'
+          } else {
+            statusBox.classList.remove('success', 'danger')
+            statusBox.classList.add('warning')
+            statusText.textContent = `🔍 Detecting: ${name} (${rollNo}) - ${currentCount}/${REQUIRED_DETECTIONS} - ${confidence.toFixed(1)}%`
+            statusIcon.textContent = '🔍'
+          }
         } else {
-          statusBox.classList.remove('success')
+          statusBox.classList.remove('success', 'warning')
           statusBox.classList.add('danger')
-          statusText.textContent = 'Face Not Recognized'
+          statusText.textContent = `❌ Face Not Recognized - ${confidence.toFixed(1)}%`
           statusIcon.textContent = '❌'
         }
       } else {
-        statusBox.classList.remove('success')
+        statusBox.classList.remove('success', 'warning')
         statusBox.classList.add('danger')
-        statusText.textContent = 'Recognition error'
+        statusText.textContent = `⚠️ ${json.error || 'Recognition error'}`
         statusIcon.textContent = '⚠️'
       }
     }catch(err){
+      console.error('Recognition error:', err)
       if(statusBox && statusText && statusIcon){
         statusBox.classList.remove('success')
         statusBox.classList.add('danger')
@@ -202,26 +525,48 @@
     }
   }
 
-  btnDetect && btnDetect.addEventListener('click', () => {
+  btnDetect && btnDetect.addEventListener('click', async () => {
     if(!statusBox || !statusText || !statusIcon) return
+    
     if(!streaming){
+      // Check server health first
+      const serverHealthy = await checkServerHealth()
+      if(!serverHealthy) {
+        toast('Face recognition server is not running. Please start face_recognition_server.py', 'danger')
+        return
+      }
+      
       streaming = true
-      statusText.textContent = 'Recognizing...'
+      btnDetect.textContent = 'Stop Recognition'
+      statusText.textContent = 'Starting recognition...'
       statusIcon.textContent = '🔍'
-      streamTimer = setInterval(captureAndSendFrame, 1200)
+      streamTimer = setInterval(captureAndSendFrame, 1500) // Slightly slower for better accuracy
+      toast('Face recognition started', 'info')
     } else {
       streaming = false
+      btnDetect.textContent = 'Start Recognition'
       if(streamTimer){ clearInterval(streamTimer); streamTimer = null }
-      statusText.textContent = 'Stopped'
+      statusText.textContent = 'Recognition stopped'
       statusIcon.textContent = '⏹️'
+      toast('Face recognition stopped', 'info')
     }
   })
 
   btnReset && btnReset.addEventListener('click', () => {
     if(!statusBox || !statusText || !statusIcon) return
-    statusBox.classList.remove('success','danger')
+    statusBox.classList.remove('success','danger','warning')
     statusText.textContent = 'Waiting for detection...'
     statusIcon.textContent = '⌛'
+    
+    // Clear all data
+    attendanceLog = []
+    recognitionCounts = {}
+    attendanceRecords = []
+    
+    // Update displays
+    updateAttendanceLogDisplay()
+    
+    toast('Reset complete - all data cleared', 'info')
   })
 
   // Reports heatmap demo
@@ -329,6 +674,10 @@
   const studentForm = document.getElementById('student-form')
   const studentPreview = document.getElementById('student-preview')
   const studentPhotosInput = document.getElementById('s-photos')
+  const studentUploadBtn = document.getElementById('s-upload-btn')
+  studentUploadBtn && studentUploadBtn.addEventListener('click', () => {
+    studentPhotosInput?.click()
+  })
   async function renderStudents(){
     if(!studentsBody) return
     studentsBody.innerHTML = ''
