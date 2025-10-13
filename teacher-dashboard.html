@@ -33,10 +33,10 @@
                     <span class="nav-icon">📷</span>
                     <span class="nav-text">Take Attendance</span>
                 </a>
-                <a class="nav-link" href="#" data-section="attendance-reports">
+                <!-- <a class="nav-link" href="#" data-section="attendance-reports">
                     <span class="nav-icon">📈</span>
                     <span class="nav-text">Attendance Reports</span>
-                </a>
+                </a> -->
                 <button class="btn mt-16" id="logout">Logout</button>
             </nav>
             <div class="sidebar-footer">
@@ -68,8 +68,12 @@
                         </button>
                     </div>
                 </div>
-
-                <div class="card mt-16">
+                <div class="card">
+                    <h3>Recent Activity</h3>
+                    <ul id="recentActivityList" class="activity-list"></ul>
+                  </div>
+                  
+                <!-- <div class="card mt-16">
                     <h3 class="section-title">Recent Activity</h3>
                     <div class="activity-list" id="recent-activity">
                         <div class="activity-item">
@@ -81,46 +85,17 @@
                             <span class="activity-text">Added new student: John Doe</span>
                         </div>
                     </div>
-                </div>
+                </div> -->
             </section>
 
             <!-- Manage Students Section -->
             <section id="manage-students-section" class="content-section">
-                <!-- Search and Filters -->
-                <div class="card">
-                    <h3 class="section-title">Student Management</h3>
-                    <div class="filters">
-                        <input class="input" placeholder="Search by name or ID..." id="student-search" />
-                        <select class="input" id="filter-department">
-                            <option value="">All Departments</option>
-                            <option>Computer</option>
-                            <option>IT</option>
-                            <option>Civil</option>
-                            <option>ECS</option>
-                            <option>DS</option>
-                        </select>
-                        <select class="input" id="filter-year">
-                            <option value="">All Years</option>
-                            <option>FY</option>
-                            <option>SY</option>
-                            <option>TY</option>
-                            <option>BE</option>
-                        </select>
-                        <select class="input" id="filter-division">
-                            <option value="">All Divisions</option>
-                            <option>A</option>
-                            <option>B</option>
-                        </select>
-                        <button class="btn" id="apply-filters">Apply Filters</button>
-                    </div>
-                </div>
-
                 <!-- Add Student Form -->
-                <div class="card mt-16">
+                <div class="card">
                     <h3 class="section-title">Add New Student</h3>
                     <form id="add-student-form" class="student-form" enctype="multipart/form-data">
                         <input class="input" placeholder="Full Name" id="student-name" required />
-                        <input class="input" placeholder="Student ID" id="student-id" required />
+                        <input class="input" placeholder="Roll No" id="student-id" required />
                         <input class="input" placeholder="Email" type="email" id="student-email" />
                         <input class="input" placeholder="Phone" id="student-phone" />
                         <select class="input" id="student-department" required>
@@ -162,6 +137,35 @@
                     </form>
                 </div>
 
+                <!-- Search and Filters -->
+                <div class="card mt-16">
+                    <h3 class="section-title">Student Management</h3>
+                    <div class="filters">
+                        <input class="input" placeholder="Search by name or ID..." id="student-search" />
+                        <select class="input" id="filter-department">
+                            <option value="">All Departments</option>
+                            <option>Computer</option>
+                            <option>IT</option>
+                            <option>Civil</option>
+                            <option>ECS</option>
+                            <option>DS</option>
+                        </select>
+                        <select class="input" id="filter-year">
+                            <option value="">All Years</option>
+                            <option>FY</option>
+                            <option>SY</option>
+                            <option>TY</option>
+                            <option>BE</option>
+                        </select>
+                        <select class="input" id="filter-division">
+                            <option value="">All Divisions</option>
+                            <option>A</option>
+                            <option>B</option>
+                        </select>
+                        <button class="btn" id="apply-filters">Apply Filters</button>
+                    </div>
+                </div>
+
                 <!-- Student Table -->
                 <div class="card mt-16">
                     <h3 class="section-title">Student List</h3>
@@ -171,7 +175,7 @@
                                 <tr>
                                     <th>Photo</th>
                                     <th>Name</th>
-                                    <th>ID</th>
+                                    <th>Roll No</th>
                                     <th>Department</th>
                                     <th>Year</th>
                                     <th>Division</th>

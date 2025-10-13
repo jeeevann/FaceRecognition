@@ -31,7 +31,13 @@ class FaceRecognitionSystem:
         """Load face encodings and student data"""
         try:
             with open(self.ENCODINGS_PATH, "rb") as f:
-                self.known_encodings, self.known_names, self.baseline_encodings = pickle.load(f)
+                data = pickle.load(f)
+                # Handle both old and new format
+                if len(data) == 4:
+                    self.known_encodings, self.known_names, self.baseline_encodings, self.student_class_info = data
+                else:
+                    self.known_encodings, self.known_names, self.baseline_encodings = data
+                    self.student_class_info = {}
             
             self.students_df = pd.read_csv(self.STUDENTS_CSV)
             self.students_df["Name"] = self.students_df["Name"].str.strip()
@@ -43,41 +49,91 @@ class FaceRecognitionSystem:
             print(f"[ERROR] Failed to load data: {e}")
             raise
     
-    def setup_attendance_file(self):
-        """Setup today's attendance file"""
-        today_date = datetime.now().date()
-        self.attendance_file = os.path.join(self.ATTENDANCE_DIR, f"attendance_{today_date}.csv")
+    def setup_attendance_file(self, department=None, year=None, division=None, time_slot=None):
+        """Setup attendance file based on class and time slot"""
+        today_date = datetime.now().strftime("%Y-%m-%d")
+        
+        # If class info provided, create structured folder and filename
+        if department and year and division and time_slot:
+            # Create full folder hierarchy: department/year/division
+            class_folder = os.path.join(self.ATTENDANCE_DIR, department, year, division)
+            if not os.path.exists(class_folder):
+                os.makedirs(class_folder)
+                print(f"[INFO] Created class folder: {class_folder}")
+            
+            # Sanitize time slot for filename (replace spaces and colons with dashes)
+            safe_time = time_slot.replace(" ", "").replace(":", "-").replace("--", "-")
+            filename = f"{today_date}_{safe_time}.csv"
+            self.attendance_file = os.path.join(class_folder, filename)
+            
+            # Store class metadata for reference
+            self.current_class = {
+                'department': department,
+                'year': year,
+                'division': division,
+                'time_slot': time_slot
+            }
+        else:
+            # Fallback to old format
+            filename = f"attendance_{today_date}.csv"
+            self.attendance_file = os.path.join(self.ATTENDANCE_DIR, filename)
+            self.current_class = None
         
         if not os.path.exists(self.attendance_file):
-            with open(self.attendance_file, "w") as f:
+            with open(self.attendance_file, "w", newline="") as f:
+                # Add class info in the header for reference
+                if self.current_class:
+                    f.write(f"# Department: {department}, Year: {year}, Division: {division}, Time Slot: {time_slot}\n")
                 f.write("RollNo,Name,Time,Confidence,Status\n")
         
-        # Load already marked students
+        print(f"[INFO] Attendance file: {self.attendance_file}")
+        
+        # Load already marked students from this specific file
         try:
-            existing_df = pd.read_csv(self.attendance_file)
+            existing_df = pd.read_csv(self.attendance_file, comment='#')
             self.marked_students = set(existing_df["RollNo"].astype(str).str.strip())
+            print(f"[INFO] Already marked: {len(self.marked_students)} students")
         except:
             self.marked_students = set()
+    
+    def filter_encodings_by_class(self, department, year, division):
+        """Filter baseline encodings to only include students from the selected class"""
+        if not self.student_class_info:
+            print("[WARNING] No class information available. Using all encodings.")
+            return self.baseline_encodings
+        
+        filtered_encodings = {}
+        for student_name, encoding in self.baseline_encodings.items():
+            if student_name in self.student_class_info:
+                info = self.student_class_info[student_name]
+                # Match department, year, and division
+                if (info['department'] == department and 
+                    info['year'] == year and 
+                    info['division'] == division):
+                    filtered_encodings[student_name] = encoding
+        
+        print(f"[INFO] Filtered to {len(filtered_encodings)} students from {department} {year} {division}")
+        return filtered_encodings
     
     def decode_base64_image(self, image_data):
         """Decode base64 image data to OpenCV format"""
         try:
-            # Remove data URL prefix if present
             if ',' in image_data:
                 image_data = image_data.split(',')[1]
             
-            # Decode base64
             img_bytes = base64.b64decode(image_data)
             nparr = np.frombuffer(img_bytes, np.uint8)
             frame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-            
             return frame
         except Exception as e:
             print(f"[ERROR] Failed to decode image: {e}")
             return None
     
-    def recognize_face_from_image(self, image_data):
-        """Recognize face from base64 image data"""
+    def recognize_face_from_image(self, image_data, department=None, year=None, division=None, time_slot=None):
+        """Recognize face from base64 image data with optional class filtering"""
+        # Setup attendance file for this specific class and time slot
+        if department and year and division and time_slot:
+            self.setup_attendance_file(department, year, division, time_slot)
         frame = self.decode_base64_image(image_data)
         if frame is None:
             return {"success": False, "error": "Invalid image data"}
@@ -90,24 +146,31 @@ class FaceRecognitionSystem:
             if not face_encodings:
                 return {"success": False, "error": "No face detected"}
             
-            # Process the first detected face
             face_encoding = face_encodings[0]
             best_confidence = 0
             best_name = "Unknown"
+            wrong_class_detected = False
+            wrong_class_info = ""
             
-            # Compare to baseline encodings
-            for student_name, baseline_enc in self.baseline_encodings.items():
+            # Filter encodings by class if specified
+            if department and year and division:
+                encodings_to_check = self.filter_encodings_by_class(department, year, division)
+            else:
+                encodings_to_check = self.baseline_encodings
+            
+            # Compare to filtered baseline encodings
+            for student_name, baseline_enc in encodings_to_check.items():
                 dist = np.linalg.norm(face_encoding - baseline_enc)
-                confidence = round((1 - dist) * 100, 2)  # 0-100%
+                confidence = round((1 - dist) * 100, 2)
                 if confidence > best_confidence:
                     best_confidence = confidence
                     best_name = student_name
             
-            # Apply fuzzy logic thresholds
-            if best_confidence >= 85:
+            # Apply fuzzy logic thresholds (≥ 60 accepted)
+            if best_confidence >= 60:
                 status = "Accepted"
                 decision = "present"
-            elif 60 <= best_confidence < 85:
+            elif 40 <= best_confidence < 60:
                 status = "Uncertain"
                 decision = "uncertain"
             else:
@@ -115,20 +178,27 @@ class FaceRecognitionSystem:
                 decision = "absent"
                 best_name = "Unknown"
             
-            # Lookup RollNo and mark attendance if recognized
             roll_no = ""
             attendance_marked = False
             
+            # Debug info
+            print(f"[DEBUG] Name: {best_name}, Confidence: {best_confidence}, Status: {status}")
+            
             if best_name != "Unknown":
-                row = self.students_df.loc[self.students_df["Name"] == best_name]
+                row = self.students_df[self.students_df["Name"].str.lower() == best_name.lower()]
                 if not row.empty:
                     roll_no = str(row["RollNo"].values[0]).strip()
                     
-                    # Mark attendance if not already marked and status is accepted
                     if roll_no not in self.marked_students and status == "Accepted":
                         time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        with open(self.attendance_file, "a") as f:
-                            f.write(f"{roll_no},{best_name},{time_now},{best_confidence}%,{status}\n")
+                        try:
+                            with open(self.attendance_file, "a", newline="") as f:
+                                f.write(f"{roll_no},{best_name},{time_now},{best_confidence}%,{status}\n")
+                                f.flush()
+                            print(f"[WRITE OK] Data written to: {os.path.abspath(self.attendance_file)}")
+                        except Exception as e:
+                            print(f"[ERROR] Could not write to file: {e}")
+                        
                         self.marked_students.add(roll_no)
                         attendance_marked = True
                         print(f"[MARKED] {roll_no} - {best_name} ({best_confidence}% - {status})")
@@ -148,9 +218,10 @@ class FaceRecognitionSystem:
             print(f"[ERROR] Recognition failed: {e}")
             return {"success": False, "error": str(e)}
 
-# For standalone usage
+# -----------------------
+# LIVE CAMERA SECTION
+# -----------------------
 def main():
-    """Original standalone functionality"""
     system = FaceRecognitionSystem()
     
     cap = cv2.VideoCapture(0)
@@ -169,39 +240,41 @@ def main():
             best_confidence = 0
             best_name = "Unknown"
             
-            # Compare to baseline encodings
             for student_name, baseline_enc in system.baseline_encodings.items():
                 dist = np.linalg.norm(face_encoding - baseline_enc)
-                confidence = round((1 - dist) * 100, 2)  # 0-100%
+                confidence = round((1 - dist) * 100, 2)
                 if confidence > best_confidence:
                     best_confidence = confidence
                     best_name = student_name
             
-            # Apply fuzzy logic thresholds
-            if best_confidence >= 85:
+            # Fuzzy thresholds (≥60 accepted)
+            if best_confidence >= 60:
                 status = "Accepted"
-            elif 60 <= best_confidence < 85:
+            elif 40 <= best_confidence < 60:
                 status = "Uncertain"
             else:
                 status = "Rejected"
                 best_name = "Unknown"
             
-            # Lookup RollNo if recognized
             roll_no = ""
             if best_name != "Unknown":
-                row = system.students_df.loc[system.students_df["Name"] == best_name]
+                row = system.students_df[system.students_df["Name"].str.lower() == best_name.lower()]
                 if not row.empty:
                     roll_no = str(row["RollNo"].values[0]).strip()
                     
-                    # Mark attendance if not already marked
-                    if roll_no not in system.marked_students:
+                    if roll_no not in system.marked_students and status == "Accepted":
                         time_now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-                        with open(system.attendance_file, "a") as f:
-                            f.write(f"{roll_no},{best_name},{time_now},{best_confidence}%,{status}\n")
+                        try:
+                            with open(system.attendance_file, "a", newline="") as f:
+                                f.write(f"{roll_no},{best_name},{time_now},{best_confidence}%,{status}\n")
+                                f.flush()
+                            print(f"[WRITE OK] Data written to: {os.path.abspath(system.attendance_file)}")
+                        except Exception as e:
+                            print(f"[ERROR] Could not write to file: {e}")
+                        
                         system.marked_students.add(roll_no)
                         print(f"[MARKED] {roll_no} - {best_name} ({best_confidence}% - {status})")
             
-            # Draw rectangle + label on webcam
             top, right, bottom, left = face_loc
             cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
             cv2.putText(frame, f"{best_name} ({best_confidence}%)", (left, top - 10),

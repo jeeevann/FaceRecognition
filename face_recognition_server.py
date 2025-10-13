@@ -59,8 +59,20 @@ def recognize():
         image_data = data['image_data']
         meta = data.get('meta', {})
         
-        # Perform face recognition
-        result = face_recognition_system.recognize_face_from_image(image_data)
+        # Extract class information and time slot from meta
+        department = meta.get('department')
+        year = meta.get('year')
+        division = meta.get('division')
+        time_slot = meta.get('time_slot')
+        
+        # Perform face recognition with class filtering and time slot
+        result = face_recognition_system.recognize_face_from_image(
+            image_data, 
+            department=department, 
+            year=year, 
+            division=division,
+            time_slot=time_slot
+        )
         
         if not result['success']:
             return jsonify(result), 400
@@ -105,7 +117,7 @@ def reload_system():
 
 @app.route('/attendance/today', methods=['GET'])
 def get_today_attendance():
-    """Get today's attendance records"""
+    """Get today's attendance records - supports filtering by class and time slot"""
     try:
         if face_recognition_system is None:
             if not initialize_system():
@@ -113,15 +125,60 @@ def get_today_attendance():
         
         import pandas as pd
         from datetime import datetime
+        import glob
         
-        today_date = datetime.now().date()
-        attendance_file = os.path.join(face_recognition_system.ATTENDANCE_DIR, f"attendance_{today_date}.csv")
+        today_date = datetime.now().strftime("%Y-%m-%d")
         
-        if not os.path.exists(attendance_file):
-            return jsonify({'success': True, 'records': []}), 200
+        # Get query parameters for filtering
+        department = request.args.get('department')
+        year = request.args.get('year')
+        division = request.args.get('division')
+        time_slot = request.args.get('time_slot')
         
-        df = pd.read_csv(attendance_file)
-        records = df.to_dict('records')
+        # Build file path based on new folder structure
+        if department and year and division and time_slot:
+            # Sanitize time slot
+            safe_time = time_slot.replace(" ", "").replace(":", "-").replace("--", "-")
+            filename = f"{today_date}_{safe_time}.csv"
+            # New structure: AttendanceFiles/department/year/division/date_timeslot.csv
+            attendance_file = os.path.join(face_recognition_system.ATTENDANCE_DIR, department, year, division, filename)
+            
+            if os.path.exists(attendance_file):
+                df = pd.read_csv(attendance_file, comment='#')
+                records = df.to_dict('records')
+            else:
+                records = []
+        elif department and year and division:
+            # Get all files for this class today
+            class_folder = os.path.join(face_recognition_system.ATTENDANCE_DIR, department, year, division)
+            if os.path.exists(class_folder):
+                pattern = os.path.join(class_folder, f"{today_date}_*.csv")
+                files = glob.glob(pattern)
+                records = []
+                for file in files:
+                    try:
+                        df = pd.read_csv(file, comment='#')
+                        records.extend(df.to_dict('records'))
+                    except:
+                        pass
+            else:
+                records = []
+        else:
+            # Get all attendance files for today across all classes
+            pattern = os.path.join(face_recognition_system.ATTENDANCE_DIR, "**", f"{today_date}_*.csv")
+            files = glob.glob(pattern, recursive=True)
+            
+            if not files:
+                return jsonify({'success': True, 'records': []}), 200
+            
+            # Combine all records
+            records = []
+            for file in files:
+                try:
+                    df = pd.read_csv(file, comment='#')
+                    records.extend(df.to_dict('records'))
+                except:
+                    pass
         
         return jsonify({'success': True, 'records': records}), 200
         

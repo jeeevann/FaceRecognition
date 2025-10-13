@@ -4,6 +4,7 @@
   --panel-2:#0f1630;
   --text:#e7ecff;
   --muted:#aab3d1;
+  --border:rgba(255,255,255,.06);
   --primary:#6c7cff;
   --primary-600:#5a69ff;
   --primary-700:#4856e6;
@@ -201,8 +202,9 @@ select.input option:disabled{color:#7a85ad;background:#111111}
 .stat-value{font-size:28px;font-weight:800;margin-top:6px;color:var(--text)}
 
 /* Activity List */
-.activity-list{display:flex;flex-direction:column;gap:12px}
-.activity-item{display:flex;align-items:center;gap:12px;padding:12px;border-radius:10px;background:rgba(255,255,255,.02);border:1px solid rgba(255,255,255,.04)}
+.activity-list{display:flex;flex-direction:column;gap:0;list-style:none;padding:0;margin:0}
+.activity-item{display:flex;align-items:start;gap:12px;padding:12px;transition:background .2s ease}
+.activity-item:hover{background:rgba(255,255,255,.02)}
 .activity-time{color:var(--muted);font-size:12px;font-weight:600;min-width:60px}
 .activity-text{color:var(--text);font-size:14px}
 

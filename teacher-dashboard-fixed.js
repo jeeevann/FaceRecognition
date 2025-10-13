@@ -90,6 +90,65 @@
   // Dashboard functionality
   function loadDashboardStats() {
     // Dashboard stats functionality
+    loadRecentActivities()
+  }
+  
+  // Load recent activities
+  async function loadRecentActivities() {
+    const activityList = $('#recentActivityList')
+    if (!activityList) {
+      console.log('Activity list element not found')
+      return
+    }
+    
+    try {
+      console.log('Fetching activities...')
+      const response = await fetch('students.php?activities=1&limit=10')
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`)
+      }
+      
+      const activities = await response.json()
+      console.log('Activities loaded:', activities)
+      
+      if (!Array.isArray(activities) || activities.length === 0) {
+        activityList.innerHTML = '<li style="text-align: center; padding: 20px; color: #aab3d1;">No recent activity</li>'
+        return
+      }
+      
+      activityList.innerHTML = ''
+      activities.forEach(activity => {
+        const li = document.createElement('li')
+        const activityDate = new Date(activity.created_at)
+        const timeStr = activityDate.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+        const dateStr = activityDate.toLocaleDateString()
+        
+        // Get icon based on activity type
+        let icon = '📝'
+        if (activity.activity_type === 'student_added') icon = '👤➕'
+        else if (activity.activity_type === 'student_deleted') icon = '🗑️'
+        else if (activity.activity_type === 'attendance_taken') icon = '✅'
+        
+        li.className = 'activity-item'
+        li.innerHTML = `
+          <div style="display: flex; align-items: start; gap: 12px; padding: 12px; border-bottom: 1px solid rgba(255,255,255,0.06);">
+            <span style="font-size: 20px;">${icon}</span>
+            <div style="flex: 1;">
+              <div style="font-weight: 500; margin-bottom: 4px; color: #e7ecff;">${activity.activity_description}</div>
+              <div style="font-size: 12px; color: #aab3d1;">${timeStr} • ${dateStr}</div>
+            </div>
+          </div>
+        `
+        activityList.appendChild(li)
+      })
+      console.log(`Displayed ${activities.length} activities`)
+    } catch (error) {
+      console.error('Error loading activities:', error)
+      if (activityList) {
+        activityList.innerHTML = '<li style="text-align: center; padding: 20px; color: #ff6b6b;">Failed to load activities</li>'
+      }
+    }
   }
 
   // Student management
@@ -197,6 +256,7 @@
         if(studentPhotosInput) studentPhotosInput.value = ''
         if(photoPreview) photoPreview.innerHTML = ''
         await loadStudents()
+        await loadRecentActivities() // Refresh activity log
       } else {
         toast(result.error || 'Failed to add student', 'danger')
       }
@@ -266,7 +326,6 @@
           <td>${student.year || ''}</td>
           <td>${student.division || ''}</td>
           <td>
-            <button class="btn-icon" onclick="editStudent(${student.id})" title="Edit">✏️</button>
             <button class="btn-icon" onclick="deleteStudent(${student.id})" title="Delete">🗑️</button>
           </td>
         `
@@ -343,10 +402,6 @@
   })
 
   // Global functions for student actions
-  window.editStudent = function(id) {
-    toast(`Edit student ${id}`, 'info')
-  }
-
   window.deleteStudent = async function(id) {
     if (confirm('Are you sure you want to delete this student?')) {
       try {
@@ -358,6 +413,7 @@
         if (result.success) {
           toast('Student deleted successfully', 'success')
           loadStudents()
+          loadRecentActivities() // Refresh activity log
         } else {
           toast('Failed to delete student', 'danger')
         }

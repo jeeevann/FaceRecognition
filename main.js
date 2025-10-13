@@ -431,6 +431,58 @@
     updateLiveLogDisplay()
     updateStatsDisplay()
   }
+  
+  // Load today's attendance from CSV via Python server
+  async function loadTodayAttendanceFromServer() {
+    try {
+      const res = await fetch(`${FLASK_BASE}/attendance/today`)
+      if (!res.ok) return
+      
+      const json = await res.json()
+      if (json.success && json.records && json.records.length > 0) {
+        console.log('Loading existing attendance records:', json.records.length)
+        
+        // Add records from CSV to our display
+        json.records.forEach(record => {
+          const rollNo = record.RollNo || record.roll_no
+          const name = record.Name || record.name
+          const time = record.Time || record.time
+          const confidenceStr = record.Confidence || '0%'
+          const confidence = parseFloat(confidenceStr.replace('%', '')) || 0
+          
+          // Check if not already in our records
+          if (!attendanceRecords.find(r => r.rollNo === rollNo)) {
+            attendanceRecords.push({
+              rollNo: rollNo,
+              name: name,
+              time: time,
+              confidence: confidence,
+              detections: 2,
+              status: 'Present',
+              timestamp: new Date()
+            })
+            
+            // Also mark in recognition counts to prevent re-marking
+            recognitionCounts[rollNo] = {
+              name: name,
+              rollNo: rollNo,
+              count: REQUIRED_DETECTIONS,
+              bestConfidence: confidence,
+              firstSeen: time,
+              lastSeen: time
+            }
+          }
+        })
+        
+        updateAttendanceRecordsDisplay()
+        updateStatsDisplay()
+        
+        toast(`Loaded ${json.records.length} existing attendance record(s)`, 'success')
+      }
+    } catch (error) {
+      console.log('Could not load existing attendance:', error)
+    }
+  }
 
   async function checkServerHealth() {
     try {
@@ -542,6 +594,7 @@
       statusIcon.textContent = '🔍'
       streamTimer = setInterval(captureAndSendFrame, 1500) // Slightly slower for better accuracy
       toast('Face recognition started', 'info')
+      loadTodayAttendanceFromServer() // Load existing attendance records
     } else {
       streaming = false
       btnDetect.textContent = 'Start Recognition'
@@ -751,6 +804,271 @@
   const stApply = document.getElementById('st-apply')
   stApply && stApply.addEventListener('click', () => { renderStudents() })
   renderStudents()
+
+  // =====================================================
+  // Teacher Management (Admin)
+  // =====================================================
+  const teacherForm = document.getElementById('teacher-form')
+  const teachersBody = document.getElementById('teachers-body')
+  
+  async function renderTeachers(){
+    if(!teachersBody) return
+    teachersBody.innerHTML = ''
+    try{
+      const teachers = await teachersAPI.getAll()
+      if(!Array.isArray(teachers) || teachers.length === 0){
+        teachersBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No teachers added yet</td></tr>'
+        return
+      }
+      teachers.forEach(t => {
+        const tr = document.createElement('tr')
+        const createdDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
+        tr.innerHTML = `
+          <td>${t.name || ''}</td>
+          <td>${t.email || ''}</td>
+          <td>${t.department || ''}</td>
+          <td>${t.phone || ''}</td>
+          <td>${t.employee_id || ''}</td>
+          <td>${t.designation || ''}</td>
+          <td>${createdDate}</td>
+        `
+        teachersBody.appendChild(tr)
+      })
+    }catch(err){
+      console.error('Failed to load teachers:', err)
+      toast('Failed to load teachers', 'danger')
+    }
+  }
+  
+  // Teacher form submit
+  teacherForm && teacherForm.addEventListener('submit', async (e) => {
+    e.preventDefault()
+    
+    const name = document.getElementById('t-name').value.trim()
+    const email = document.getElementById('t-email').value.trim().toLowerCase()
+    const password = document.getElementById('t-password').value.trim()
+    const phone = document.getElementById('t-phone').value.trim()
+    const department = document.getElementById('t-dept').value.trim()
+    const employeeId = document.getElementById('t-empid').value.trim()
+    const designation = document.getElementById('t-title').value.trim()
+    
+    if(!name || !email || !password || !department){
+      toast('Please fill all required fields (Name, Email, Password, Department)', 'danger')
+      return
+    }
+    
+    // Basic email validation
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){
+      toast('Please enter a valid email address', 'danger')
+      return
+    }
+    
+    // Password validation (minimum 6 characters)
+    if(password.length < 6){
+      toast('Password must be at least 6 characters', 'danger')
+      return
+    }
+    
+    try{
+      const teacherData = {
+        name,
+        email,
+        password,
+        phone,
+        department,
+        employee_id: employeeId,
+        designation
+      }
+      
+      const res = await teachersAPI.add(teacherData)
+      
+      if(!res || !res.success){
+        toast(res?.error || 'Failed to add teacher', 'danger')
+        return
+      }
+      
+      // Success!
+      toast(`✅ Teacher added successfully! Login email: ${email}`, 'success')
+      teacherForm.reset()
+      renderTeachers()
+    }catch(err){
+      console.error('Error adding teacher:', err)
+      toast('Failed to add teacher. Please try again.', 'danger')
+    }
+  })
+  
+  // Load teachers on page load
+  renderTeachers()
+
+  // =====================================================
+  // Admin Dashboard Stats & Teachers Table
+  // =====================================================
+  const statTeachers = document.getElementById('stat-teachers')
+  const statStudents = document.getElementById('stat-students')
+  const statClasses = document.getElementById('stat-classes')
+  const adminTeachersBody = document.getElementById('teachers-body')
+  const teacherSearch = document.getElementById('t-search')
+  const teacherSort = document.getElementById('t-sort')
+  const teacherPrev = document.getElementById('t-prev')
+  const teacherNext = document.getElementById('t-next')
+  const teacherPage = document.getElementById('t-page')
+  
+  let allTeachersData = []
+  let currentPage = 1
+  const itemsPerPage = 10
+  
+  // Fetch and display admin stats
+  async function loadAdminStats(){
+    if(!statTeachers || !statStudents || !statClasses) return
+    
+    try{
+      const response = await fetch('admin_stats.php')
+      const data = await response.json()
+      
+      if(data.success){
+        statTeachers.textContent = data.teachers || 0
+        statStudents.textContent = data.students || 0
+        statClasses.textContent = data.classes || 0
+      } else {
+        statTeachers.textContent = '0'
+        statStudents.textContent = '0'
+        statClasses.textContent = '0'
+      }
+    }catch(err){
+      console.error('Failed to load stats:', err)
+      statTeachers.textContent = 'N/A'
+      statStudents.textContent = 'N/A'
+      statClasses.textContent = 'N/A'
+    }
+  }
+  
+  // Fetch all teachers for the admin dashboard table
+  async function loadAdminTeachersTable(){
+    if(!adminTeachersBody) return
+    
+    try{
+      const teachers = await teachersAPI.getAll()
+      allTeachersData = Array.isArray(teachers) ? teachers : []
+      renderAdminTeachersTable()
+    }catch(err){
+      console.error('Failed to load teachers:', err)
+      adminTeachersBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">Failed to load teachers</td></tr>'
+    }
+  }
+  
+  // Render teachers table with filtering, sorting, and pagination
+  function renderAdminTeachersTable(){
+    if(!adminTeachersBody) return
+    
+    let filteredTeachers = [...allTeachersData]
+    
+    // Apply search filter
+    const searchQuery = (teacherSearch?.value || '').toLowerCase().trim()
+    if(searchQuery){
+      filteredTeachers = filteredTeachers.filter(t => {
+        const name = (t.name || '').toLowerCase()
+        const email = (t.email || '').toLowerCase()
+        const dept = (t.department || '').toLowerCase()
+        return name.includes(searchQuery) || email.includes(searchQuery) || dept.includes(searchQuery)
+      })
+    }
+    
+    // Apply sorting
+    const sortValue = teacherSort?.value || 'created_at|desc'
+    const [sortField, sortOrder] = sortValue.split('|')
+    
+    filteredTeachers.sort((a, b) => {
+      let aVal = a[sortField] || ''
+      let bVal = b[sortField] || ''
+      
+      // Handle dates
+      if(sortField === 'created_at'){
+        aVal = new Date(aVal).getTime()
+        bVal = new Date(bVal).getTime()
+      } else {
+        aVal = String(aVal).toLowerCase()
+        bVal = String(bVal).toLowerCase()
+      }
+      
+      if(sortOrder === 'asc'){
+        return aVal < bVal ? -1 : aVal > bVal ? 1 : 0
+      } else {
+        return aVal > bVal ? -1 : aVal < bVal ? 1 : 0
+      }
+    })
+    
+    // Pagination
+    const totalPages = Math.ceil(filteredTeachers.length / itemsPerPage)
+    currentPage = Math.max(1, Math.min(currentPage, totalPages || 1))
+    
+    const startIndex = (currentPage - 1) * itemsPerPage
+    const endIndex = startIndex + itemsPerPage
+    const pageTeachers = filteredTeachers.slice(startIndex, endIndex)
+    
+    // Update pagination controls
+    if(teacherPage) teacherPage.textContent = `${currentPage} / ${totalPages || 1}`
+    if(teacherPrev) teacherPrev.disabled = currentPage <= 1
+    if(teacherNext) teacherNext.disabled = currentPage >= totalPages
+    
+    // Render table
+    adminTeachersBody.innerHTML = ''
+    
+    if(pageTeachers.length === 0){
+      adminTeachersBody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:20px;color:var(--muted)">No teachers found</td></tr>'
+      return
+    }
+    
+    pageTeachers.forEach(t => {
+      const tr = document.createElement('tr')
+      const createdDate = t.created_at ? new Date(t.created_at).toLocaleDateString() : ''
+      tr.innerHTML = `
+        <td><strong>${t.name || ''}</strong></td>
+        <td>${t.email || ''}</td>
+        <td>${t.department || ''}</td>
+        <td>${t.phone || '-'}</td>
+        <td>${t.employee_id || '-'}</td>
+        <td>${t.designation || '-'}</td>
+        <td>${createdDate}</td>
+      `
+      adminTeachersBody.appendChild(tr)
+    })
+  }
+  
+  // Event listeners for admin dashboard
+  teacherSearch && teacherSearch.addEventListener('input', () => {
+    currentPage = 1
+    renderAdminTeachersTable()
+  })
+  
+  teacherSort && teacherSort.addEventListener('change', () => {
+    currentPage = 1
+    renderAdminTeachersTable()
+  })
+  
+  teacherPrev && teacherPrev.addEventListener('click', () => {
+    if(currentPage > 1){
+      currentPage--
+      renderAdminTeachersTable()
+    }
+  })
+  
+  teacherNext && teacherNext.addEventListener('click', () => {
+    const totalPages = Math.ceil(allTeachersData.length / itemsPerPage)
+    if(currentPage < totalPages){
+      currentPage++
+      renderAdminTeachersTable()
+    }
+  })
+  
+  // Load admin dashboard data on page load
+  if(statTeachers || adminTeachersBody){
+    loadAdminStats()
+    loadAdminTeachersTable()
+    
+    // Refresh stats every 30 seconds
+    setInterval(() => {
+      loadAdminStats()
+      loadAdminTeachersTable()
+    }, 30000)
+  }
 })()
-
-

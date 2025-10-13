@@ -1,5 +1,5 @@
 // API helper functions for database operations
-const API_BASE = '/Mini-Project/FaceRecognition-main';
+const API_BASE = '/Mini-Project/FaceRecognition';
 
 async function apiRequest(endpoint, method = 'GET', data = null) {
     const options = {
@@ -35,7 +35,12 @@ const studentsAPI = {
         if(department) form.append('department', department);
         if(email) form.append('email', email);
         if(phone) form.append('phone', phone);
-        if(files && files.length){ Array.from(files).forEach(f => form.append('photos', f)); }
+        // Append each file with array notation for PHP to receive as array
+        if(files && files.length){ 
+            Array.from(files).forEach((f, index) => {
+                form.append('photos[]', f);
+            });
+        }
         const res = await fetch(`${API_BASE}/students.php`, { method: 'POST', body: form });
         return res.json();
     },
